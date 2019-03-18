@@ -26,8 +26,9 @@
 if ($device['os'] === 'hikvision-ds') {
     echo 'hikvision-ds:';
 
-    $total = snmp_get($device, '.1.3.6.1.4.1.39165.1.10.0', '-Ovq');
-    $used  = snmp_get($device, '.1.3.6.1.4.1.39165.1.11.1', '-Ovq');
-    $descr = 'Memory';
-    discover_mempool($valid_mempool, $device, 0, 'hikvision-ds', $descr, null, null);
+    $usage = snmp_get($device, 'memSize.0', '-Ovq', 'HIK-DEVICE-MIB');
+    if ($usage) {
+        $descr = 'Memory';
+        discover_mempool($valid_mempool, $device, 0, 'hikvision-ds', $descr, '100', null, null);
+    }
 }

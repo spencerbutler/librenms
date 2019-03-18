@@ -24,13 +24,12 @@
  */
 
 if ($device['os'] === 'hikvision-ds') {
-  echo 'hikvision-ds:';
+    echo 'hikvision-ds:';
 
-  $tmp_data = snmp_get_multi_oid($device, ['.1.3.6.1.4.1.39165.1.10.0', '.1.3.6.1.4.1.39165.1.11.0']);
-  
-  $total = $tmp_data[0];
-  $used  = $tmp_data[1];
-  $mempool['total'] = $total;
-  $mempool['used']  = $used;
-  $mempool['free']  = $total - $used;
+    $tmp_data = snmp_get_multi_oid($device, ['memSize.0', 'memUsed.0'], '-OUQs', 'HIK-DEVICE-MIB');
+    
+    $mempool['total'] = $tmp_data['memSize.0'];
+    $mempool['used']  = $tmp_data['memUsed.0'];
+    $mempool['free']  = $tmp_data['memSize.0'] - $tmp_data['memUsed.0'];
 }
+unset($tmp_data);
