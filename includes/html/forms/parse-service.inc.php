@@ -12,10 +12,8 @@
  * the source code distribution for details.
  */
 
-use LibreNMS\Authentication\LegacyAuth;
-
-if (!LegacyAuth::user()->hasGlobalAdmin()) {
-    die('ERROR: You need to be admin');
+if (! Auth::user()->hasGlobalAdmin()) {
+    exit('ERROR: You need to be admin');
 }
 
 $service_id = $vars['service_id'];
@@ -23,12 +21,14 @@ $service_id = $vars['service_id'];
 if (is_numeric($service_id) && $service_id > 0) {
     $service = service_get(null, $service_id);
 
-    $output = array(
+    $output = [
         'stype'     => $service[0]['service_type'],
         'ip'        => $service[0]['service_ip'],
         'desc'      => $service[0]['service_desc'],
-        'param'     => $service[0]['service_param']
-    );
+        'param'     => $service[0]['service_param'],
+        'ignore'    => $service[0]['service_ignore'],
+        'disabled'   => $service[0]['service_disabled'],
+    ];
 
     header('Content-Type: application/json');
     echo _json_encode($output);

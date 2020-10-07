@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -29,9 +28,9 @@ use App\Models\Device;
 use App\Models\Ipv4Address;
 use App\Models\Port;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use LibreNMS\Tests\LaravelTestCase;
+use LibreNMS\Tests\DBTestCase;
 
-class DeviceTest extends LaravelTestCase
+class DeviceTest extends DBTestCase
 {
     use DatabaseTransactions;
 
@@ -41,7 +40,7 @@ class DeviceTest extends LaravelTestCase
 
         $found = Device::findByHostname($device->hostname);
         $this->assertNotNull($found);
-        $this->assertEquals($device->device_id, $found->device_id, "Did not find the correct device");
+        $this->assertEquals($device->device_id, $found->device_id, 'Did not find the correct device');
     }
 
     public function testFindByIpFail()
@@ -77,7 +76,7 @@ class DeviceTest extends LaravelTestCase
 
         $found = Device::findByIp($device->ip);
         $this->assertNotNull($found);
-        $this->assertEquals($device->device_id, $found->device_id, "Did not find the correct device");
+        $this->assertEquals($device->device_id, $found->device_id, 'Did not find the correct device');
     }
 
     public function testFindByIpHostname()
@@ -87,7 +86,7 @@ class DeviceTest extends LaravelTestCase
 
         $found = Device::findByIp($ip);
         $this->assertNotNull($found);
-        $this->assertEquals($device->device_id, $found->device_id, "Did not find the correct device");
+        $this->assertEquals($device->device_id, $found->device_id, 'Did not find the correct device');
     }
 
     public function testFindByIpThroughPort()
@@ -100,6 +99,6 @@ class DeviceTest extends LaravelTestCase
 
         $found = Device::findByIp($ipv4->ipv4_address);
         $this->assertNotNull($found);
-        $this->assertEquals($device->device_id, $found->device_id, "Did not find the correct device");
+        $this->assertEquals($device->device_id, $found->device_id, 'Did not find the correct device');
     }
 }

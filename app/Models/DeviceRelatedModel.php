@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -36,14 +35,17 @@ class DeviceRelatedModel extends BaseModel
 
     public function scopeInDeviceGroup($query, $deviceGroup)
     {
-        $groups = $deviceGroup instanceof DeviceGroup ? $deviceGroup->devices()->pluck('devices.device_id') : [];
-        return $query->whereIn($this->getTable() . '.device_id', $groups);
+        return $query->whereIn($query->qualifyColumn('device_id'), function ($query) use ($deviceGroup) {
+            $query->select('device_id')
+                ->from('device_group_device')
+                ->where('device_group_id', $deviceGroup);
+        });
     }
 
     // ---- Define Relationships ----
 
     public function device()
     {
-        return $this->belongsTo('App\Models\Device', 'device_id', 'device_id');
+        return $this->belongsTo(\App\Models\Device::class, 'device_id', 'device_id');
     }
 }

@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -25,6 +24,7 @@
 
 namespace LibreNMS\Tests;
 
+use LibreNMS\Alerting\QueryBuilderFluentParser;
 use LibreNMS\Alerting\QueryBuilderParser;
 use LibreNMS\Config;
 
@@ -41,27 +41,32 @@ class QueryBuilderTest extends TestCase
     }
 
     /**
-     *
      * @dataProvider loadQueryData
      * @param string $legacy
      * @param array $builder
      * @param string $display
      * @param string $sql
      */
-    public function testQueryConversion($legacy, $builder, $display, $sql)
+    public function testQueryConversion($legacy, $builder, $display, $sql, $query)
     {
-        if (!empty($legacy)) {
+        if (! empty($legacy)) {
             // some rules don't have a legacy representation
             $this->assertEquals($builder, QueryBuilderParser::fromOld($legacy)->toArray());
         }
-        $this->assertEquals($display, QueryBuilderParser::fromJson($builder)->toSql(false));
-        $this->assertEquals($sql, QueryBuilderParser::fromJson($builder)->toSql());
+        $qb = QueryBuilderFluentParser::fromJson($builder);
+        $this->assertEquals($display, $qb->toSql(false));
+        $this->assertEquals($sql, $qb->toSql());
+
+        $qbq = $qb->toQuery();
+        $this->assertEquals($query[0], $qbq->toSql(), 'Fluent SQL does not match');
+        $this->assertEquals($query[1], $qbq->getBindings(), 'Fluent bindings do not match');
     }
 
     public function loadQueryData()
     {
         $base = Config::get('install_dir');
         $data = file_get_contents("$base/$this->data_file");
+
         return json_decode($data, true);
     }
 }

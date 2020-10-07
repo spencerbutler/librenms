@@ -29,9 +29,8 @@ use App\Models\Device;
 use App\Models\Ipv4Address;
 use LibreNMS\Snmptrap\Dispatcher;
 use LibreNMS\Snmptrap\Trap;
-use LibreNMS\Tests\LaravelTestCase;
 
-class FgTrapIpsTest extends LaravelTestCase
+class FgTrapIpsTest extends SnmpTrapTestCase
 {
     public function testIpsAnomaly()
     {

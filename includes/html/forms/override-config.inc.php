@@ -12,15 +12,13 @@
  * the source code distribution for details.
 */
 
-use LibreNMS\Authentication\LegacyAuth;
-
 header('Content-type: application/json');
 
-if (!LegacyAuth::user()->hasGlobalAdmin()) {
-    $response = array(
+if (! Auth::user()->hasGlobalAdmin()) {
+    $response = [
         'status'  => 'error',
         'message' => 'Need to be admin',
-    );
+    ];
     echo _json_encode($response);
     exit;
 }
@@ -43,8 +41,8 @@ if (empty($device['device_id'])) {
     $message = 'Config has been updated';
 }
 
-$response = array(
+$response = [
     'status'        => $status,
     'message'       => $message,
-);
+];
 echo _json_encode($response);

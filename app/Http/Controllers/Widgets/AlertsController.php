@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -25,21 +24,23 @@
 
 namespace App\Http\Controllers\Widgets;
 
-use App\Models\DeviceGroup;
 use Illuminate\Http\Request;
 
 class AlertsController extends WidgetController
 {
     protected $title = 'Alerts';
     protected $defaults = [
+        'title' => null,
         'device' => null,
         'acknowledged' => null,
         'fired' => null,
         'min_severity' => null,
         'state' => null,
-        'group' => null,
+        'device_group' => null,
         'proc' => 0,
+        'location' => 1,
         'sort' => 1,
+        'hidenavigation' => 0,
     ];
 
     public function getView(Request $request)
@@ -49,7 +50,7 @@ class AlertsController extends WidgetController
 
     public function getSettingsView(Request $request)
     {
-        $data = $this->getSettings();
+        $data = $this->getSettings(true);
         $data['severities'] = [
             // alert_rules.status is enum('ok','warning','critical')
             'ok' => 1,
@@ -67,7 +68,6 @@ class AlertsController extends WidgetController
             'worse' => '3',
             'better' => '4',
         ];
-        $data['device_group'] = DeviceGroup::find($data['group']);
 
         return view('widgets.settings.alerts', $data);
     }

@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 Heath Barnhart
  * @author     Heath Barnhart <hbarnhart@kanren.net>
@@ -26,15 +25,11 @@
 namespace LibreNMS\Tests\Feature\SnmpTraps;
 
 use App\Models\Device;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use LibreNMS\Snmptrap\Dispatcher;
 use LibreNMS\Snmptrap\Trap;
-use LibreNMS\Tests\LaravelTestCase;
 
-class AdvaNetworkElementAlmTest extends LaravelTestCase
+class AdvaNetworkElementAlmTrapTest extends SnmpTrapTestCase
 {
-    use DatabaseTransactions;
-
     public function testElementAlarmCleared()
     {
         $device = factory(Device::class)->create();
@@ -61,7 +56,7 @@ ADVA-MIB::neEventLogTimeStamp.231 2018-12-10,11:1:43.3,-6:0";
 
         $trap = new Trap($trapText);
 
-        $message = "Alarming Element: NETWORK PORT-1-1-1-2 Description: Test Alarm Cleared Severity: cleared";
+        $message = 'Alarming Element: NETWORK PORT-1-1-1-2 Description: Test Alarm Cleared Severity: cleared';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 1);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmNetworkElementAlmTrap cleared');
@@ -93,7 +88,7 @@ ADVA-MIB::neEventLogTimeStamp.231 2018-12-10,11:1:43.3,-6:0";
 
         $trap = new Trap($trapText);
 
-        $message = "Alarming Element: NETWORK PORT-1-1-1-2 Description: Test Alarm Minor Severity: minor";
+        $message = 'Alarming Element: NETWORK PORT-1-1-1-2 Description: Test Alarm Minor Severity: minor';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 3);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmNetworkElementAlmTrap minor');
@@ -125,7 +120,7 @@ ADVA-MIB::neEventLogTimeStamp.231 2018-12-10,11:1:43.3,-6:0";
 
         $trap = new Trap($trapText);
 
-        $message = "Alarming Element: NETWORK PORT-1-1-1-2 Description: Test Alarm Major Severity: major";
+        $message = 'Alarming Element: NETWORK PORT-1-1-1-2 Description: Test Alarm Major Severity: major';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 4);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmNetworkElementAlmTrap major');
@@ -157,7 +152,7 @@ ADVA-MIB::neEventLogTimeStamp.231 2018-12-10,11:1:43.3,-6:0";
 
         $trap = new Trap($trapText);
 
-        $message = "Alarming Element: NETWORK PORT-1-1-1-2 Description: Test Alarm Critical Severity: critical";
+        $message = 'Alarming Element: NETWORK PORT-1-1-1-2 Description: Test Alarm Critical Severity: critical';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 5);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmNetworkElementAlmTrap critical');

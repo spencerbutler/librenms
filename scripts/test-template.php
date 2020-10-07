@@ -4,42 +4,44 @@
 $init_modules = ['alerts', 'laravel'];
 require __DIR__ . '/../includes/init.php';
 
-use LibreNMS\Alert\Template;
 use LibreNMS\Alert\AlertData;
+use LibreNMS\Alert\RunAlerts;
+use LibreNMS\Alert\Template;
 
 $options = getopt('t:h:r:p:s:d::');
 
 if (isset($options['t']) && isset($options['h']) && isset($options['r'])) {
     set_debug(isset($options['d']));
+    $runAlerts = new RunAlerts();
 
     $template_id = $options['t'];
     $device_id = ctype_digit($options['h']) ? $options['h'] : getidbyname($options['h']);
-    $rule_id = (int)$options['r'];
+    $rule_id = (int) $options['r'];
 
     $where = 'alerts.device_id=' . $device_id . ' && alerts.rule_id=' . $rule_id;
     if (isset($options['s'])) {
-        $where .= ' alerts.state=' . (int)$options['s'];
+        $where .= ' alerts.state=' . (int) $options['s'];
     }
 
-    $alerts = loadAlerts($where);
+    $alerts = $runAlerts->loadAlerts($where);
     if (empty($alerts)) {
         echo "No alert found, make sure to select an active alert.\n";
         exit(2);
     }
 
-    $obj = DescribeAlert($alerts[0]);
+    $obj = $runAlerts->describeAlert($alerts[0]);
     if (isset($options['p'])) {
         $obj['transport'] = $options['p'];
     }
-    $type  = new Template;
-    $obj['alert']     = new AlertData($obj);
-    $obj['title']     = $type->getTitle($obj);
-    $obj['msg']       = $type->getBody($obj);
+    $type = new Template;
+    $obj['alert'] = new AlertData($obj);
+    $obj['title'] = $type->getTitle($obj);
+    $obj['msg'] = $type->getBody($obj);
     unset($obj['template']);
     unset($obj['alert']);
     print_r($obj);
 } else {
-    c_echo("
+    c_echo('
 Usage:
     -t Is the template ID.
     -h Is the device ID or hostname
@@ -52,6 +54,6 @@ Usage:
 Example:
 ./scripts/test-template.php -t 10 -d -h localhost -r 2 -p mail
 
-");
+');
     exit(1);
 }

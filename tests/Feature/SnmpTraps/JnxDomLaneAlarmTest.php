@@ -19,23 +19,20 @@
  *
  * Tests JnxDomAlertSet and JnxDomAlertCleared traps from Juniper devices.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 KanREN, Inc
  * @author     Heath Barnhart <hbarnhart@kanren.net>
  */
 
-namespace LibreNMS\Tests;
+namespace LibreNMS\Tests\Feature\SnmpTraps;
 
 use App\Models\Device;
 use App\Models\Port;
 use LibreNMS\Snmptrap\Dispatcher;
 use LibreNMS\Snmptrap\Trap;
-use Log;
 
-class JnxDomLaneAlarmTest extends LaravelTestCase
+class JnxDomLaneAlarmTest extends SnmpTrapTestCase
 {
-
     public function testJnxDomLaneAlarmSetTrap()
     {
         $device = factory(Device::class)->create();

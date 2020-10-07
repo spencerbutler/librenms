@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 Heath Barnhart
  * @author     Heath Barnhart <hbarnhart@kanren.net>
@@ -26,15 +25,11 @@
 namespace LibreNMS\Tests\Feature\SnmpTraps;
 
 use App\Models\Device;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use LibreNMS\Snmptrap\Dispatcher;
 use LibreNMS\Snmptrap\Trap;
-use LibreNMS\Tests\LaravelTestCase;
 
-class AdvaObjectCreationTest extends LaravelTestCase
+class AdvaObjectCreationTest extends SnmpTrapTestCase
 {
-    use DatabaseTransactions;
-
     public function testUserCreation()
     {
         $device = factory(Device::class)->create();
@@ -53,7 +48,7 @@ ADVA-MIB::neEventLogTimeStamp.91 2018-12-10,8:55:41.1,-6:0";
 
         $trap = new Trap($trapText);
 
-        $message = "User object testuser created";
+        $message = 'User object testuser created';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 2);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmObjectCreationTrap user created');
@@ -84,7 +79,7 @@ ADVA-MIB::neEventLogTimeStamp.110 2018-12-10,8:58:43.7,-6:0";
 
         $trap = new Trap($trapText);
 
-        $message = "LAG 1 created";
+        $message = 'LAG 1 created';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 2);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmObjectCreationTrap LAG created');

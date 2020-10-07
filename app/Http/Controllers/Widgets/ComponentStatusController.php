@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -33,6 +32,9 @@ use Illuminate\View\View;
 class ComponentStatusController extends WidgetController
 {
     protected $title = 'Component Status';
+    protected $defaults = [
+        'device_group' => null,
+    ];
 
     /**
      * @param Request $request
@@ -40,6 +42,7 @@ class ComponentStatusController extends WidgetController
      */
     public function getView(Request $request)
     {
+        $data = $this->getSettings();
         $status = [
             [
                 'color' => 'text-success',
@@ -52,12 +55,16 @@ class ComponentStatusController extends WidgetController
             [
                 'color' => 'text-danger',
                 'text' => __('Critical'),
-            ]
+            ],
         ];
 
         $component_status = Component::query()
             ->select('status', DB::raw("count('status') as total"))
             ->groupBy('status')
+            ->where('disabled', '!=', 0)
+            ->when($data['device_group'], function ($query) use ($data) {
+                $query->inDeviceGroup($data['device_group']);
+            })
             ->get()->pluck('total', 'status')->toArray();
 
         foreach ($status as $key => $value) {
@@ -65,5 +72,10 @@ class ComponentStatusController extends WidgetController
         }
 
         return view('widgets.component-status', compact('status'));
+    }
+
+    public function getSettingsView(Request $request)
+    {
+        return view('widgets.settings.component-status', $this->getSettings(true));
     }
 }

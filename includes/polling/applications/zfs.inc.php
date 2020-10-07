@@ -1,7 +1,7 @@
 <?php
 
-use LibreNMS\Exceptions\JsonAppMissingKeysException;
 use LibreNMS\Exceptions\JsonAppException;
+use LibreNMS\Exceptions\JsonAppMissingKeysException;
 use LibreNMS\RRD\RrdDefinition;
 
 $name = 'zfs';
@@ -9,8 +9,8 @@ $app_id = $app['app_id'];
 
 echo $name;
 
-// Is set to false later if missing keys are found. 
-$not_legacy=1;
+// Is set to false later if missing keys are found.
+$not_legacy = 1;
 
 try {
     $zfs = json_app_get($device, $name, 1)['data'];
@@ -18,8 +18,9 @@ try {
     //old version with out the data key
     $zfs = $e->getParsedJson();
 } catch (JsonAppException $e) {
-    echo PHP_EOL . $name . ':' .$e->getCode().':'. $e->getMessage() . PHP_EOL;
-    update_application($app, $e->getCode().':'.$e->getMessage(), []); // Set empty metrics and error message
+    echo PHP_EOL . $name . ':' . $e->getCode() . ':' . $e->getMessage() . PHP_EOL;
+    update_application($app, $e->getCode() . ':' . $e->getMessage(), []); // Set empty metrics and error message
+
     return;
 }
 
@@ -180,22 +181,22 @@ foreach ($zfs['pools'] as $pool) {
 //
 // component processing for ZFS
 //
-$device_id=$device['device_id'];
-$options= [
+$device_id = $device['device_id'];
+$options = [
     'filter' => [
         'device_id' => ['=', $device_id],
         'type' => ['=', 'zfs'],
     ],
 ];
 
-$component=new LibreNMS\Component();
-$components=$component->getComponents($device_id, $options);
+$component = new LibreNMS\Component();
+$components = $component->getComponents($device_id, $options);
 
 // if no pools, delete zfs components
 if (empty($pools)) {
     if (isset($components[$device_id])) {
         foreach ($components[$device_id] as $component_id => $_unused) {
-                 $component->deleteComponent($component_id);
+            $component->deleteComponent($component_id);
         }
     }
 } else {
@@ -204,6 +205,9 @@ if (empty($pools)) {
     } else {
         $zfsc = $component->createComponent($device_id, 'zfs');
     }
+
+    // Make sure we don't readd it, just in a different order.
+    sort($pools);
 
     $id = $component->getFirstComponentID($zfsc);
     $zfsc[$id]['label'] = 'ZFS';

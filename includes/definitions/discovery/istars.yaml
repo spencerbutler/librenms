@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 mib: UPS-MIB
 modules:
     sensors:
@@ -285,3 +286,17 @@ modules:
                     descr: High Voltage Transfer 
                     index: 'upsConfigHighVoltageTransferPoint.{{ $index }}'
                     group: Config
+=======
+modules:
+    os:
+        sysDescr_regex: '/_SWV(?<version>.*)$/'
+        hardware:
+            - UPS-MIB::upsIdentManufacturer.0
+            - UPS-MIB::upsIdentModel.0
+        hardware_template: '{{ UPS-MIB::upsIdentManufacturer.0 }} {{ UPS-MIB::upsIdentModel.0 }}'
+        version:
+            - UPS-MIB::upsIdentAgentSoftwareVersion.0
+            - UPS-MIB::upsIdentUPSSoftwareVersion.0
+        version_template: '{{ UPS-MIB::upsIdentAgentSoftwareVersion.0 }} {{ UPS-MIB::upsIdentUPSSoftwareVersion.0 }}'
+        features: UPS-MIB::upsIdentAttachedDevices.0
+>>>>>>> 1e4702fa4f97dc431277f39299e155ad86d9dcdf

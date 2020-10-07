@@ -15,28 +15,28 @@
  * @author     LibreNMS Contributors
 */
 
-use LibreNMS\Authentication\LegacyAuth;
+use LibreNMS\Config;
 
 $graph_type = mres($vars['graph_type']);
-$unit       = mres($vars['unit']);
-$class      = mres($vars['class']);
+$unit = mres($vars['unit']);
+$class = mres($vars['class']);
 
 $sql = " FROM `$table` AS S, `devices` AS D";
 
-if (!LegacyAuth::user()->hasGlobalRead()) {
-    $sql .= ', devices_perms as P';
-}
-
-$sql .= " WHERE S.sensor_class=? AND S.device_id = D.device_id ";
+$sql .= ' WHERE S.sensor_class=? AND S.device_id = D.device_id ';
 $param[] = mres($vars['class']);
 
-if (!LegacyAuth::user()->hasGlobalRead()) {
-    $sql .= " AND D.device_id = P.device_id AND P.user_id = ?";
-    $param[] = LegacyAuth::id();
+if (! Auth::user()->hasGlobalRead()) {
+    $device_ids = Permissions::devicesForUser()->toArray() ?: [0];
+    $sql .= ' AND `D`.`device_id` IN ' . dbGenPlaceholders(count($device_ids));
+    $param = array_merge($param, $device_ids);
 }
 
-if (isset($searchPhrase) && !empty($searchPhrase)) {
-    $sql .= " AND (`D`.`hostname` LIKE '%$searchPhrase%' OR `sensor_descr` LIKE '%$searchPhrase%' OR `sensor_current` LIKE '%searchPhrase')";
+if (isset($searchPhrase) && ! empty($searchPhrase)) {
+    $sql .= ' AND (`D`.`hostname` LIKE ? OR `sensor_descr` LIKE ? OR `sensor_current` LIKE ?)';
+    $param[] = "%$searchPhrase%";
+    $param[] = "%$searchPhrase%";
+    $param[] = "%$searchPhrase";
 }
 
 $count_sql = "SELECT COUNT(`sensor_id`) $sql";
@@ -46,14 +46,14 @@ if (empty($count)) {
     $count = 0;
 }
 
-if (!isset($sort) || empty($sort)) {
+if (! isset($sort) || empty($sort)) {
     $sort = '`D`.`hostname`, `S`.`sensor_descr`';
 }
 
 $sql .= " ORDER BY $sort";
 
 if (isset($current)) {
-    $limit_low  = (($current * $rowCount) - ($rowCount));
+    $limit_low = (($current * $rowCount) - ($rowCount));
     $limit_high = $rowCount;
 }
 
@@ -65,10 +65,10 @@ $sql = "SELECT * $sql";
 
 foreach (dbFetchRows($sql, $param) as $sensor) {
     $alert = '';
-    if (!isset($sensor['sensor_current'])) {
+    if (! isset($sensor['sensor_current'])) {
         $sensor['sensor_current'] = 'NaN';
-    } elseif ((!is_null($sensor['sensor_limit']) && $sensor['sensor_current'] >= $sensor['sensor_limit']) ||
-        (!is_null($sensor['sensor_limit_low']) && $sensor['sensor_current'] <= $sensor['sensor_limit_low'])
+    } elseif ((! is_null($sensor['sensor_limit']) && $sensor['sensor_current'] >= $sensor['sensor_limit']) ||
+        (! is_null($sensor['sensor_limit_low']) && $sensor['sensor_current'] <= $sensor['sensor_limit_low'])
     ) {
         $alert = '<i class="fa fa-flag fa-lg" style="color:red" aria-hidden="true"></i>';
     }
@@ -78,53 +78,42 @@ foreach (dbFetchRows($sql, $param) as $sensor) {
     // FIXME - DUPLICATED IN device/overview/sensors
     $graph_colour = str_replace('#', '', $row_colour);
 
-    $graph_array           = array();
+    $graph_array = [];
     $graph_array['height'] = '100';
-    $graph_array['width']  = '210';
-    $graph_array['to']     = $config['time']['now'];
-    $graph_array['id']     = $sensor['sensor_id'];
-    $graph_array['type']   = $graph_type;
-    $graph_array['from']   = $config['time']['day'];
+    $graph_array['width'] = '210';
+    $graph_array['to'] = Config::get('time.now');
+    $graph_array['id'] = $sensor['sensor_id'];
+    $graph_array['type'] = $graph_type;
+    $graph_array['from'] = Config::get('time.day');
     $graph_array['legend'] = 'no';
 
-    $link_array         = $graph_array;
+    $link_array = $graph_array;
     $link_array['page'] = 'graphs';
     unset($link_array['height'], $link_array['width'], $link_array['legend']);
     $link_graph = generate_url($link_array);
 
-    $link = generate_url(array('page' => 'device', 'device' => $sensor['device_id'], 'tab' => $tab, 'metric' => $sensor['sensor_class']));
+    $link = generate_url(['page' => 'device', 'device' => $sensor['device_id'], 'tab' => $group, 'metric' => $sensor['sensor_class']]);
 
-    $overlib_content = '<div style="width: 580px;"><h2>'.$sensor['hostname'].' - '.$sensor['sensor_descr'].'</h1>';
-    foreach (array('day', 'week', 'month', 'year') as $period) {
-        $graph_array['from'] = $config['time'][$period];
-        $overlib_content    .= str_replace('"', "\\'", generate_graph_tag($graph_array));
+    $overlib_content = '<div style="width: 580px;"><span class="overlib-text">' . $sensor['hostname'] . ' - ' . $sensor['sensor_descr'] . '</span>';
+    foreach (['day', 'week', 'month', 'year'] as $period) {
+        $graph_array['from'] = Config::get("time.$period");
+        $overlib_content .= str_replace('"', "\\'", generate_graph_tag($graph_array));
     }
 
     $overlib_content .= '</div>';
 
-    $graph_array['width']  = 80;
+    $graph_array['width'] = 80;
     $graph_array['height'] = 20;
-    $graph_array['bg']     = 'ffffff00';
+    $graph_array['bg'] = 'ffffff00';
     // the 00 at the end makes the area transparent.
-    $graph_array['from'] = $config['time']['day'];
-    $sensor_minigraph =  generate_lazy_graph_tag($graph_array);
+    $graph_array['from'] = Config::get('time.day');
+    $sensor_minigraph = generate_lazy_graph_tag($graph_array);
 
     $sensor['sensor_descr'] = substr($sensor['sensor_descr'], 0, 48);
 
-    if ($graph_type == 'sensor_state') {
-        // If we have a state, let's display a label with textual state translation
-        $state_translation = array();
-        $state_translation = dbFetchRows('SELECT * FROM state_translations as ST, sensors_to_state_indexes as SSI WHERE ST.state_index_id=SSI.state_index_id AND SSI.sensor_id = ? AND ST.state_value = ? ', array($sensor['sensor_id'], $sensor['sensor_current']));
+    $sensor_current = $graph_type == 'sensor_state' ? get_state_label($sensor) : get_sensor_label_color($sensor, $translations);
 
-        //$current_label = get_state_label_color($sensor);
-        $sensor_current = get_state_label($state_translation['0']['state_generic_value'], (!empty($state_translation['0']['state_descr'])) ? $state_translation[0]['state_descr'] . " (".$sensor['sensor_current'].")" : $sensor['sensor_current']);
-    } else {
-        // we have another sensor
-        $current_label = get_sensor_label_color($sensor);
-        $sensor_current = "<span class='label $current_label'>".format_si($sensor['sensor_current']).$unit."</span>";
-    }
-
-    $response[] = array(
+    $response[] = [
         'hostname'         => generate_device_link($sensor),
         'sensor_descr'     => overlib_link($link, $sensor['sensor_descr'], $overlib_content, null),
         'graph'            => overlib_link($link_graph, $sensor_minigraph, $overlib_content, null),
@@ -134,22 +123,22 @@ foreach (dbFetchRows($sql, $param) as $sensor) {
             '<span class=\'label label-default\'>' . trim(format_si($sensor['sensor_limit_low']) . $unit) . '</span>',
         'sensor_limit'     => is_null($sensor['sensor_limit']) ? '-' :
             '<span class=\'label label-default\'>' . trim(format_si($sensor['sensor_limit']) . $unit) . '</span>',
-    );
+    ];
 
     if ($vars['view'] == 'graphs') {
-        $daily_graph = 'graph.php?id='.$sensor['sensor_id'].'&amp;type='.$graph_type.'&amp;from='.$config['time']['day'].'&amp;to='.$config['time']['now'].'&amp;width=211&amp;height=100';
-        $daily_url   = 'graph.php?id='.$sensor['sensor_id'].'&amp;type='.$graph_type.'&amp;from='.$config['time']['day'].'&amp;to='.$config['time']['now'].'&amp;width=400&amp;height=150';
+        $daily_graph = 'graph.php?id=' . $sensor['sensor_id'] . '&amp;type=' . $graph_type . '&amp;from=' . Config::get('time.day') . '&amp;to=' . Config::get('time.now') . '&amp;width=211&amp;height=100';
+        $daily_url = 'graph.php?id=' . $sensor['sensor_id'] . '&amp;type=' . $graph_type . '&amp;from=' . Config::get('time.day') . '&amp;to=' . Config::get('time.now') . '&amp;width=400&amp;height=150';
 
-        $weekly_graph = 'graph.php?id='.$sensor['sensor_id'].'&amp;type='.$graph_type.'&amp;from='.$config['time']['week'].'&amp;to='.$config['time']['now'].'&amp;width=211&amp;height=100';
-        $weekly_url   = 'graph.php?id='.$sensor['sensor_id'].'&amp;type='.$graph_type.'&amp;from='.$config['time']['week'].'&amp;to='.$config['time']['now'].'&amp;width=400&amp;height=150';
+        $weekly_graph = 'graph.php?id=' . $sensor['sensor_id'] . '&amp;type=' . $graph_type . '&amp;from=' . Config::get('time.week') . '&amp;to=' . Config::get('time.now') . '&amp;width=211&amp;height=100';
+        $weekly_url = 'graph.php?id=' . $sensor['sensor_id'] . '&amp;type=' . $graph_type . '&amp;from=' . Config::get('time.week') . '&amp;to=' . Config::get('time.now') . '&amp;width=400&amp;height=150';
 
-        $monthly_graph = 'graph.php?id='.$sensor['sensor_id'].'&amp;type='.$graph_type.'&amp;from='.$config['time']['month'].'&amp;to='.$config['time']['now'].'&amp;width=211&amp;height=100';
-        $monthly_url   = 'graph.php?id='.$sensor['sensor_id'].'&amp;type='.$graph_type.'&amp;from='.$config['time']['month'].'&amp;to='.$config['time']['now'].'&amp;width=400&amp;height=150';
+        $monthly_graph = 'graph.php?id=' . $sensor['sensor_id'] . '&amp;type=' . $graph_type . '&amp;from=' . Config::get('time.month') . '&amp;to=' . Config::get('time.now') . '&amp;width=211&amp;height=100';
+        $monthly_url = 'graph.php?id=' . $sensor['sensor_id'] . '&amp;type=' . $graph_type . '&amp;from=' . Config::get('time.month') . '&amp;to=' . Config::get('time.now') . '&amp;width=400&amp;height=150';
 
-        $yearly_graph = 'graph.php?id='.$sensor['sensor_id'].'&amp;type='.$graph_type.'&amp;from='.$config['time']['year'].'&amp;to='.$config['time']['now'].'&amp;width=211&amp;height=100';
-        $yearly_url   = 'graph.php?id='.$sensor['sensor_id'].'&amp;type='.$graph_type.'&amp;from='.$config['time']['year'].'&amp;to='.$config['time']['now'].'&amp;width=400&amp;height=150';
+        $yearly_graph = 'graph.php?id=' . $sensor['sensor_id'] . '&amp;type=' . $graph_type . '&amp;from=' . Config::get('time.year') . '&amp;to=' . Config::get('time.now') . '&amp;width=211&amp;height=100';
+        $yearly_url = 'graph.php?id=' . $sensor['sensor_id'] . '&amp;type=' . $graph_type . '&amp;from=' . Config::get('time.year') . '&amp;to=' . Config::get('time.now') . '&amp;width=400&amp;height=150';
 
-        $response[] = array(
+        $response[] = [
             'hostname'       => "<a onmouseover=\"return overlib('<img src=\'$daily_url\'>', LEFT);\" onmouseout=\"return nd();\">
             <img src='$daily_graph' border=0></a> ",
             'sensor_descr'   => "<a onmouseover=\"return overlib('<img src=\'$weekly_url\'>', LEFT);\" onmouseout=\"return nd();\">
@@ -160,14 +149,14 @@ foreach (dbFetchRows($sql, $param) as $sensor) {
             'sensor_current' => "<a onmouseover=\"return overlib('<img src=\'$yearly_url\'>', LEFT);\" onmouseout=\"return nd();\">
             <img src='$yearly_graph' border=0></a>",
             'sensor_range'   => '',
-        );
+        ];
     } //end if
 }//end foreach
 
-$output = array(
+$output = [
     'current'  => $current,
     'rowCount' => $rowCount,
     'rows'     => $response,
     'total'    => $count,
-);
+];
 echo _json_encode($output);

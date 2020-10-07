@@ -12,7 +12,7 @@
       <input type="radio" name="bill_type" id="bill_type_cdr" value="cdr"
             <?php
             if ($bill_data['bill_type'] == 'cdr') {
-                echo "checked";
+                echo 'checked';
             }
             ?> onchange="javascript: billType();" /> CDR 95th
     </label>
@@ -20,7 +20,7 @@
       <input type="radio" name="bill_type" id="bill_type_quota" value="quota"
             <?php
             if ($bill_data['bill_type'] == 'quota') {
-                echo "checked";
+                echo 'checked';
             }
             ?> onchange="javascript: billType();" /> Quota
     </label>
@@ -38,6 +38,25 @@
         <option <?php echo $cdr['select_mbps'] ?> value="Mbps">Megabits per second (Mbps)</option>
         <option <?php echo $cdr['select_gbps'] ?> value="Gbps">Gigabits per second (Gbps)</option>
       </select>
+    </div>
+    <label class="col-sm-4 control-label" for="dir_95th">95th Calculation</label>
+    <div class="col-sm-8">
+      <label class="radio-inline">
+       <input type="radio" name="dir_95th" id="dir_95th_inout" value="in"
+            <?php
+            if ($bill_data['dir_95th'] == 'in' || $bill_data['dir_95th'] == 'out') {
+                echo 'checked';
+            }
+            ?> /> Max In/Out
+       </label>
+      <label class="radio-inline">
+       <input type="radio" name="dir_95th" id="dir_95th_agg" value="agg"
+            <?php
+            if ($bill_data['dir_95th'] == 'agg') {
+                echo 'checked';
+            }
+            ?> /> Aggregate
+       </label>
     </div>
   </div>
   <div id="quotaDiv">
@@ -60,7 +79,7 @@
     <select name="bill_day" class="form-control input-sm">
     <?php
     for ($x = 1; $x < 32; $x++) {
-        $sel = $bill_data['bill_day'] == $x ? "selected " : "";
+        $sel = $bill_data['bill_day'] == $x ? 'selected ' : '';
         echo "<option $sel value='$x'>$x</option>\n";
     }
     ?>

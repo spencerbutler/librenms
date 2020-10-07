@@ -12,27 +12,24 @@
 
 header('Content-type: application/json');
 
-use LibreNMS\Config;
-use LibreNMS\Authentication\LegacyAuth;
-
 $device_hostname = clean($_POST['device_hostname']);
-if (LegacyAuth::user()->hasGlobalAdmin() && isset($device_hostname)) {
-    if (oxidized_node_update($device_hostname, "LibreNMS GUI refresh", LegacyAuth::user()->username)) {
-        $status  = 'ok';
+if (Auth::user()->hasGlobalAdmin() && isset($device_hostname)) {
+    if (oxidized_node_update($device_hostname, 'LibreNMS GUI refresh', Auth::user()->username)) {
+        $status = 'ok';
         $message = 'Queued refresh in oxidized for device ' . $device_hostname;
     } else {
-        $status  = 'error';
+        $status = 'error';
         $message = 'ERROR: Could not queue refresh of oxidized device' . $device_hostname;
-    };
+    }
 } else {
-    $status  = 'error';
+    $status = 'error';
     $message = 'ERROR: Could not queue refresh oxidized device';
 }
 
-$output = array(
+$output = [
     'status'  => $status,
     'message' => $message,
-);
+];
 
 header('Content-type: application/json');
 echo _json_encode($output);

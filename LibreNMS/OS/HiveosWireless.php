@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Ryan Finney
  * @author     https://github.com/theherodied/
@@ -27,12 +26,13 @@ namespace LibreNMS\OS;
 
 use LibreNMS\Device\Processor;
 use LibreNMS\Device\WirelessSensor;
+use LibreNMS\Interfaces\Discovery\ProcessorDiscovery;
 use LibreNMS\Interfaces\Discovery\Sensors\WirelessClientsDiscovery;
 use LibreNMS\Interfaces\Discovery\Sensors\WirelessFrequencyDiscovery;
 use LibreNMS\Interfaces\Discovery\Sensors\WirelessNoiseFloorDiscovery;
 use LibreNMS\Interfaces\Discovery\Sensors\WirelessPowerDiscovery;
-use LibreNMS\Interfaces\Discovery\ProcessorDiscovery;
 use LibreNMS\Interfaces\Polling\Sensors\WirelessFrequencyPolling;
+use LibreNMS\Interfaces\Polling\Sensors\WirelessNoiseFloorPolling;
 use LibreNMS\OS;
 
 class HiveosWireless extends OS implements
@@ -40,6 +40,7 @@ class HiveosWireless extends OS implements
     WirelessFrequencyDiscovery,
     WirelessFrequencyPolling,
     WirelessNoiseFloorDiscovery,
+    WirelessNoiseFloorPolling,
     WirelessPowerDiscovery,
     ProcessorDiscovery
 {
@@ -51,15 +52,16 @@ class HiveosWireless extends OS implements
      */
     public function discoverProcessors()
     {
-        $device = $this->getDevice();
-        return array(
+        $device = $this->getDeviceArray();
+
+        return [
             Processor::discover(
                 $this->getName(),
                 $this->getDeviceId(),
                 '1.3.6.1.4.1.26928.1.2.3.0', // AH-SYSTEM-MIB::ahCpuUtilization
                 0
-            )
-        );
+            ),
+        ];
     }
 
     /**
@@ -71,9 +73,10 @@ class HiveosWireless extends OS implements
     public function discoverWirelessClients()
     {
         $oid = '.1.3.6.1.4.1.26928.1.2.9.0'; // AH-SYSTEM-MIB::ahClientCount
-        return array(
-            new WirelessSensor('clients', $this->getDeviceId(), $oid, 'HiveosWireless', 1, 'Clients')
-        );
+
+        return [
+            new WirelessSensor('clients', $this->getDeviceId(), $oid, 'HiveosWireless', 1, 'Clients'),
+        ];
     }
 
     /**
@@ -90,7 +93,7 @@ class HiveosWireless extends OS implements
     public function discoverWirelessFrequency()
     {
         $ahRadioName = $this->getCacheByIndex('ahIfName', 'AH-INTERFACE-MIB');
-        $data = snmpwalk_group($this->getDevice(), 'ahRadioChannel', 'AH-INTERFACE-MIB');
+        $data = snmpwalk_group($this->getDeviceArray(), 'ahRadioChannel', 'AH-INTERFACE-MIB');
         foreach ($data as $index => $frequency) {
             $sensors[] = new WirelessSensor(
                 'frequency',
@@ -102,10 +105,11 @@ class HiveosWireless extends OS implements
                 WirelessSensor::channelToFrequency($frequency['ahRadioChannel'])
             );
         }
+
         return $sensors;
     }
 
-   /**
+    /**
      * Discover wireless tx power. This is in dBm. Type is power.
      * Returns an array of LibreNMS\Device\Sensor objects that have been discovered
      *
@@ -113,10 +117,10 @@ class HiveosWireless extends OS implements
      */
     public function discoverWirelessPower()
     {
-        $sensors = array();
+        $sensors = [];
 
         $ahRadioName = $this->getCacheByIndex('ahIfName', 'AH-INTERFACE-MIB');
-        $ahTxPow = snmpwalk_group($this->getDevice(), 'ahRadioTxPower', 'AH-INTERFACE-MIB');
+        $ahTxPow = snmpwalk_group($this->getDeviceArray(), 'ahRadioTxPower', 'AH-INTERFACE-MIB');
         foreach ($ahTxPow as $index => $entry) {
             $sensors[] = new WirelessSensor(
                 'power',
@@ -128,15 +132,16 @@ class HiveosWireless extends OS implements
                 $entry['ahRadioTxPower']
             );
         }
+
         return $sensors;
     }
 
     public function discoverWirelessNoiseFloor()
     {
         $ahRadioName = $this->getCacheByIndex('ahIfName', 'AH-INTERFACE-MIB');
-        $ahRxNoise = snmpwalk_group($this->getDevice(), 'ahRadioNoiseFloor', 'AH-INTERFACE-MIB');
-        $sensors = array();
-        foreach ($ahRxNoise as $index => $entry) {
+        $ahRadioNoiseFloor = snmpwalk_group($this->getDeviceArray(), 'ahRadioNoiseFloor', 'AH-INTERFACE-MIB');
+        $sensors = [];
+        foreach ($ahRadioNoiseFloor as $index => $entry) {
             $sensors[] = new WirelessSensor(
                 'noise-floor',
                 $this->getDeviceId(),
@@ -144,9 +149,28 @@ class HiveosWireless extends OS implements
                 'hiveos-wireless',
                 $index,
                 'Noise floor ' . $ahRadioName[$index],
-                $entry['ahRxNoise']
+                $entry['ahRadioNoiseFloor'] - 256
             );
         }
+
         return $sensors;
+    }
+
+    /**
+     * Poll wireless noise floor
+     * The returned array should be sensor_id => value pairs
+     *
+     * @param array $sensors Array of sensors needed to be polled
+     * @return array of polled data
+     */
+    public function pollWirelessNoiseFloor(array $sensors)
+    {
+        $data = [];
+        $ahRadioNoiseFloor = snmpwalk_group($this->getDeviceArray(), 'ahRadioNoiseFloor', 'AH-INTERFACE-MIB');
+        foreach ($sensors as $sensor) {
+            $data[$sensor['sensor_id']] = $ahRadioNoiseFloor[$sensor['sensor_index']]['ahRadioNoiseFloor'] - 256;
+        }
+
+        return $data;
     }
 }

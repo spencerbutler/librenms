@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -29,9 +28,8 @@ use App\Models\Device;
 use App\Models\Ipv4Address;
 use LibreNMS\Snmptrap\Dispatcher;
 use LibreNMS\Snmptrap\Trap;
-use LibreNMS\Tests\LaravelTestCase;
 
-class FgTrapVpnTunTest extends LaravelTestCase
+class FgTrapVpnTunTest extends SnmpTrapTestCase
 {
     public function testVpnTunDown()
     {

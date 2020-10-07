@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 Heath Barnhart
  * @author     Heath Barnhart <hbarnhart@kanren.net>
@@ -26,15 +25,11 @@
 namespace LibreNMS\Tests\Feature\SnmpTraps;
 
 use App\Models\Device;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use LibreNMS\Snmptrap\Dispatcher;
 use LibreNMS\Snmptrap\Trap;
-use LibreNMS\Tests\LaravelTestCase;
 
-class AdvaSysAlmTrapTest extends LaravelTestCase
+class AdvaSysAlmTrapTest extends SnmpTrapTestCase
 {
-    use DatabaseTransactions;
-
     public function testCriticalAlarm()
     {
         $device = factory(Device::class)->create();
@@ -54,7 +49,7 @@ CM-ALARM-MIB::cmSysAlmDescr.5 \"Critical alarm test\"";
 
         $trap = new Trap($trapText);
 
-        $message = "System Alarm: Critical alarm test Status: critical";
+        $message = 'System Alarm: Critical alarm test Status: critical';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 5);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmSysAlmTrap critical');
@@ -79,7 +74,7 @@ CM-ALARM-MIB::cmSysAlmDescr.5 \"Major alarm test\"";
 
         $trap = new Trap($trapText);
 
-        $message = "System Alarm: Major alarm test Status: major";
+        $message = 'System Alarm: Major alarm test Status: major';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 4);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmSysAlmTrap major');
@@ -104,7 +99,7 @@ CM-ALARM-MIB::cmSysAlmDescr.5 \"Minor alarm test\"";
 
         $trap = new Trap($trapText);
 
-        $message = "System Alarm: Minor alarm test Status: minor";
+        $message = 'System Alarm: Minor alarm test Status: minor';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 3);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmSysAlmTrap minor');
@@ -129,7 +124,7 @@ CM-ALARM-MIB::cmSysAlmDescr.5 \"Cleared alarm test\"";
 
         $trap = new Trap($trapText);
 
-        $message = "System Alarm: Cleared alarm test Status: cleared";
+        $message = 'System Alarm: Cleared alarm test Status: cleared';
         \Log::shouldReceive('event')->once()->with($message, $device->device_id, 'trap', 1);
 
         $this->assertTrue(Dispatcher::handle($trap), 'Could not handle cmSysAlmTrap major');

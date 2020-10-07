@@ -19,7 +19,6 @@
  *
  * Tests Ruckus Wireless SmartZone cluster state trap handlers..
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 Heath Barnhart
  * @author     Heath Barnhart <hbarnhart@kanren.net>
@@ -30,9 +29,8 @@ namespace LibreNMS\Tests\Feature\SnmpTraps;
 use App\Models\Device;
 use LibreNMS\Snmptrap\Dispatcher;
 use LibreNMS\Snmptrap\Trap;
-use LibreNMS\Tests\LaravelTestCase;
 
-class RuckusSzClusterStateTest extends LaravelTestCase
+class RuckusSzClusterStateTest extends SnmpTrapTestCase
 {
     public function testClusterInMaintenance()
     {

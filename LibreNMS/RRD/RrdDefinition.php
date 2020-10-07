@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2017 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -25,12 +24,14 @@
 
 namespace LibreNMS\RRD;
 
+use LibreNMS\Config;
 use LibreNMS\Exceptions\InvalidRrdTypeException;
 
 class RrdDefinition
 {
-    private static $types = array('GAUGE', 'DERIVE', 'COUNTER', 'ABSOLUTE', 'DCOUNTER', 'DDERIVE');
-    private $dataSets = array();
+    private static $types = ['GAUGE', 'DERIVE', 'COUNTER', 'ABSOLUTE', 'DCOUNTER', 'DDERIVE'];
+    private $dataSets = [];
+    private $skipNameCheck = false;
 
     /**
      * Make a new empty RrdDefinition
@@ -53,20 +54,18 @@ class RrdDefinition
      */
     public function addDataset($name, $type, $min = null, $max = null, $heartbeat = null)
     {
-        global $config;
-
         if (empty($name)) {
-            d_echo("DS must be set to a non-empty string.");
+            d_echo('DS must be set to a non-empty string.');
         }
 
-        $ds = array();
-        $ds[] = $this->escapeName($name);
-        $ds[] = $this->checkType($type);
-        $ds[] = is_null($heartbeat) ? $config['rrd']['heartbeat'] : $heartbeat;
-        $ds[] = is_null($min) ? 'U' : $min;
-        $ds[] = is_null($max) ? 'U' : $max;
-
-        $this->dataSets[] = $ds;
+        $name = $this->escapeName($name);
+        $this->dataSets[$name] = [
+            $name,
+            $this->checkType($type),
+            is_null($heartbeat) ? Config::get('rrd.heartbeat') : $heartbeat,
+            is_null($min) ? 'U' : $min,
+            is_null($max) ? 'U' : $max,
+        ];
 
         return $this;
     }
@@ -84,6 +83,30 @@ class RrdDefinition
     }
 
     /**
+     * Check if the give dataset name is valid for this definition
+     *
+     * @param $name
+     * @return bool
+     */
+    public function isValidDataset($name)
+    {
+        return $this->skipNameCheck || isset($this->dataSets[$this->escapeName($name)]);
+    }
+
+    /**
+     * Disable checking if the name is valid for incoming data and just assign values
+     * based on order
+     *
+     * @return $this
+     */
+    public function disableNameChecking()
+    {
+        $this->skipNameCheck = true;
+
+        return $this;
+    }
+
+    /**
      * Check that the data set type is valid.
      *
      * @param string $type
@@ -92,10 +115,11 @@ class RrdDefinition
      */
     private function checkType($type)
     {
-        if (!in_array($type, self::$types)) {
+        if (! in_array($type, self::$types)) {
             $msg = "$type is not valid, must be: " . implode(' | ', self::$types);
             throw new InvalidRrdTypeException($msg);
         }
+
         return $type;
     }
 
@@ -108,6 +132,7 @@ class RrdDefinition
     private function escapeName($name)
     {
         $name = preg_replace('/[^a-zA-Z0-9_\-]/', '', $name);
+
         return substr($name, 0, 19);
     }
 }

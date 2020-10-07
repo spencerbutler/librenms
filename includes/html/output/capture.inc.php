@@ -17,16 +17,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2016 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
-
-use LibreNMS\Authentication\LegacyAuth;
-
-if (!LegacyAuth::user()->hasGlobalAdmin()) {
-    echo("Insufficient Privileges");
+if (! Auth::user()->hasGlobalAdmin()) {
+    echo 'Insufficient Privileges';
     exit();
 }
 
@@ -35,7 +31,7 @@ $type = $_REQUEST['type'];
 
 switch ($type) {
     case 'poller':
-        $cmd = ['php', $config['install_dir'] . '/poller.php', '-h', $hostname, '-r', '-f', '-d'];
+        $cmd = ['php', \LibreNMS\Config::get('install_dir') . '/poller.php', '-h', $hostname, '-r', '-f', '-d'];
         $filename = "poller-$hostname.txt";
         break;
     case 'snmpwalk':
@@ -46,7 +42,7 @@ switch ($type) {
         $filename = $device['os'] . '-' . $device['hostname'] . '.snmpwalk';
         break;
     case 'discovery':
-        $cmd = ['php', $config['install_dir'] . '/discovery.php', '-h', $hostname, '-d'];
+        $cmd = ['php', \LibreNMS\Config::get('install_dir') . '/discovery.php', '-h', $hostname, '-d'];
         $filename = "discovery-$hostname.txt";
         break;
     default:
@@ -56,8 +52,10 @@ switch ($type) {
 
 // ---- Output ----
 $proc = new \Symfony\Component\Process\Process($cmd);
+$proc->setTimeout(Config::get('snmp.exec_timeout', 1200));
+
 if ($_GET['format'] == 'text') {
-    header("Content-type: text/plain");
+    header('Content-type: text/plain');
     header('X-Accel-Buffering: no');
 
     $proc->run(function ($type, $buffer) {

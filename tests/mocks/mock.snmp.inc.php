@@ -17,13 +17,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2016 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
 
-$snmpMockCache = array();
+use Illuminate\Support\Str;
+use LibreNMS\Config;
+
+$snmpMockCache = [];
 
 /**
  * Cache the data from an snmprec file
@@ -33,16 +35,16 @@ $snmpMockCache = array();
  */
 function cache_snmprec($file)
 {
-    global $config, $snmpMockCache;
+    global $snmpMockCache;
     if (isset($snmpMockCache[$file])) {
         return;
     }
-    $snmpMockCache[$file] = array();
+    $snmpMockCache[$file] = [];
 
-    $data = file_get_contents($config['install_dir'] . "/tests/snmpsim/$file.snmprec");
+    $data = file_get_contents(Config::get('install_dir') . "/tests/snmpsim/$file.snmprec");
     $line = strtok($data, "\r\n");
     while ($line !== false) {
-        list($oid, $type, $data) = explode('|', $line, 3);
+        [$oid, $type, $data] = explode('|', $line, 3);
         if ($type == '4') {
             $data = trim($data);
         } elseif ($type == '6') {
@@ -51,7 +53,7 @@ function cache_snmprec($file)
             $data = hex2str($data);
         }
 
-        $snmpMockCache[$file][$oid] = array($type, $data);
+        $snmpMockCache[$file][$oid] = [$type, $data];
         $line = strtok("\r\n");
     }
 }
@@ -108,8 +110,6 @@ function snmprec_get_oid($community, $oid)
  */
 function snmp_translate_number($oid, $mib = null, $mibdir = null)
 {
-    global $config;
-
     // optimizations (35s -> 1.6s on my laptop)
     if ($oid == 'SNMPv2-MIB::sysDescr.0') {
         return '1.3.6.1.2.1.1.1.0';
@@ -138,8 +138,8 @@ function snmp_translate_number($oid, $mib = null, $mibdir = null)
         return ltrim($oid, '.');
     }
 
-    $cmd = "snmptranslate -IR -On $oid";
-    $cmd .= ' -M ' . (isset($mibdir) ? $config['mib_dir'] . ":".$config['mib_dir']."/$mibdir" : $config['mib_dir']);
+    $cmd = "snmptranslate -IR -On '$oid'";
+    $cmd .= ' -M ' . (isset($mibdir) ? Config::get('mib_dir') . ':' . Config::get('mib_dir') . "/$mibdir" : Config::get('mib_dir'));
     if (isset($mib) && $mib) {
         $cmd .= " -m $mib";
     }
@@ -155,10 +155,8 @@ function snmp_translate_number($oid, $mib = null, $mibdir = null)
 
 function snmp_translate_type($oid, $mib = null, $mibdir = null)
 {
-    global $config;
-
     $cmd = "snmptranslate -IR -Td $oid";
-    $cmd .= ' -M ' . (isset($mibdir) ? $config['mib_dir'] . ":".$config['mib_dir']."/$mibdir" : $config['mib_dir']);
+    $cmd .= ' -M ' . (isset($mibdir) ? Config::get('mib_dir') . ':' . Config::get('mib_dir') . "/$mibdir" : Config::get('mib_dir'));
     if (isset($mib) && $mib) {
         $cmd .= " -m $mib";
     }
@@ -169,34 +167,34 @@ function snmp_translate_type($oid, $mib = null, $mibdir = null)
         throw new Exception('Could not translate oid: ' . $oid . PHP_EOL . 'Tried: ' . $cmd);
     }
 
-    if (str_contains($result, 'OCTET STRING')) {
+    if (Str::contains($result, 'OCTET STRING')) {
         return 4;
     }
-    if (str_contains($result, 'Integer32')) {
+    if (Str::contains($result, 'Integer32')) {
         return 2;
     }
-    if (str_contains($result, 'NULL')) {
+    if (Str::contains($result, 'NULL')) {
         return 5;
     }
-    if (str_contains($result, 'OBJECT IDENTIFIER')) {
+    if (Str::contains($result, 'OBJECT IDENTIFIER')) {
         return 6;
     }
-    if (str_contains($result, 'IpAddress')) {
+    if (Str::contains($result, 'IpAddress')) {
         return 64;
     }
-    if (str_contains($result, 'Counter32')) {
+    if (Str::contains($result, 'Counter32')) {
         return 65;
     }
-    if (str_contains($result, 'Gauge32')) {
+    if (Str::contains($result, 'Gauge32')) {
         return 66;
     }
-    if (str_contains($result, 'TimeTicks')) {
+    if (Str::contains($result, 'TimeTicks')) {
         return 67;
     }
-    if (str_contains($result, 'Opaque')) {
+    if (Str::contains($result, 'Opaque')) {
         return 68;
     }
-    if (str_contains($result, 'Counter64')) {
+    if (Str::contains($result, 'Counter64')) {
         return 70;
     }
 
@@ -223,24 +221,23 @@ function snmp_get($device, $oid, $options = null, $mib = null, $mibdir = null)
         return $result;
     } catch (Exception $e) {
         d_echo("[SNMP] snmpget $community $oid ($num_oid): no data\n");
+
         return false;
     }
 }
 
-
 function snmp_get_multi_oid($device, $oids, $options = '-OUQn', $mib = null, $mibdir = null)
 {
-    if (!is_array($oids)) {
+    if (! is_array($oids)) {
         $oids = explode(' ', $oids);
     }
 
-    $data = array();
+    $data = [];
     foreach ($oids as $index => $oid) {
-        if (str_contains($options, 'n')) {
+        if (Str::contains($options, 'n')) {
             $oid_name = '.' . snmp_translate_number($oid, $mib, $mibdir);
             $val = snmp_get($device, $oid_name, $options, $mib, $mibdir);
-        } elseif (str_contains($options, 's')
-            && str_contains($oid, '::')) {
+        } elseif (Str::contains($options, 's') && Str::contains($oid, '::')) {
             $tmp = explode('::', $oid);
             $oid_name = $tmp[1];
             $val = snmp_get($device, $oid, $options, $mib, $mibdir);
@@ -265,7 +262,7 @@ function snmp_walk($device, $oid, $options = null, $mib = null, $mibdir = null)
 
     $output = '';
     foreach ($dev as $key => $data) {
-        if (starts_with($key, $num_oid)) {
+        if (Str::startsWith($key, $num_oid)) {
             if ($data[0] == 6) {
                 $output .= '.' . $data[1] . PHP_EOL;
             } else {
@@ -281,11 +278,7 @@ function snmp_walk($device, $oid, $options = null, $mib = null, $mibdir = null)
         return false;
     } else {
         d_echo($output);
+
         return $output;
     }
-}
-
-function register_mibs()
-{
-    // stub
 }

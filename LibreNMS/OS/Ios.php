@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2017 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -25,31 +24,33 @@
 
 namespace LibreNMS\OS;
 
+use Illuminate\Support\Str;
 use LibreNMS\Device\WirelessSensor;
-use LibreNMS\Interfaces\Discovery\ProcessorDiscovery;
 use LibreNMS\Interfaces\Discovery\Sensors\WirelessClientsDiscovery;
 use LibreNMS\Interfaces\Discovery\Sensors\WirelessRssiDiscovery;
-use LibreNMS\OS;
 use LibreNMS\OS\Shared\Cisco;
+use LibreNMS\OS\Traits\CiscoCellular;
 
 class Ios extends Cisco implements
     WirelessClientsDiscovery,
     WirelessRssiDiscovery
 {
+    use CiscoCellular;
+
     /**
      * @return array Sensors
      */
     public function discoverWirelessClients()
     {
-        $device = $this->getDevice();
+        $device = $this->getDeviceArray();
 
-        if (!starts_with($device['hardware'], 'AIR-') && !str_contains($device['hardware'], 'ciscoAIR')) {
+        if (! Str::startsWith($device['hardware'], 'AIR-') && ! Str::contains($device['hardware'], 'ciscoAIR')) {
             // unsupported IOS hardware
-            return array();
+            return [];
         }
 
-        $data = snmpwalk_cache_oid($device, 'cDot11ActiveWirelessClients', array(), 'CISCO-DOT11-ASSOCIATION-MIB');
-        $entPhys = snmpwalk_cache_oid($device, 'entPhysicalDescr', array(), 'ENTITY-MIB');
+        $data = snmpwalk_cache_oid($device, 'cDot11ActiveWirelessClients', [], 'CISCO-DOT11-ASSOCIATION-MIB');
+        $entPhys = snmpwalk_cache_oid($device, 'entPhysicalDescr', [], 'ENTITY-MIB');
 
         // fixup incorrect/missing entPhysicalIndex mapping
         foreach ($data as $index => $_unused) {
@@ -57,7 +58,7 @@ class Ios extends Cisco implements
                 $descr = $ent['entPhysicalDescr'];
                 unset($entPhys[$entIndex]); // only use each one once
 
-                if (ends_with($descr, 'Radio')) {
+                if (Str::endsWith($descr, 'Radio')) {
                     d_echo("Mapping entPhysicalIndex $entIndex to ifIndex $index\n");
                     $data[$index]['entPhysicalIndex'] = $entIndex;
                     $data[$index]['entPhysicalDescr'] = $descr;
@@ -66,7 +67,7 @@ class Ios extends Cisco implements
             }
         }
 
-        $sensors = array();
+        $sensors = [];
         foreach ($data as $index => $entry) {
             $sensors[] = new WirelessSensor(
                 'clients',
@@ -85,31 +86,6 @@ class Ios extends Cisco implements
                 30,
                 $entry['entPhysicalIndex'],
                 'ports'
-            );
-        }
-        return $sensors;
-    }
-
-    /**
-     * Discover wireless RSSI (Received Signal Strength Indicator). This is in dBm. Type is rssi.
-     * Returns an array of LibreNMS\Device\Sensor objects that have been discovered
-     *
-     * @return array
-     */
-    public function discoverWirelessRssi()
-    {
-        $sensors = array();
-
-        $data = snmpwalk_cache_oid($this->getDevice(), 'c3gCurrentGsmRssi', array(), 'CISCO-WAN-3G-MIB');
-        foreach ($data as $index => $entry) {
-            $sensors[] = new WirelessSensor(
-                'rssi',
-                $this->getDeviceId(),
-                '.1.3.6.1.4.1.9.9.661.1.3.4.1.1.1.' . $index,
-                'ios',
-                $index,
-                'RSSI: Chain ' . str_replace('1.', '', $index),
-                $entry['c3gCurrentGsmRssi.1']
             );
         }
 

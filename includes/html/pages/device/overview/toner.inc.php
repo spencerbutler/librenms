@@ -7,7 +7,7 @@ $graph_type = 'toner_usage';
 $supplies = \App\Models\Toner::query()->where('device_id', $device['device_id'])->get()->groupBy('toner_type');
 
 foreach ($supplies as $type => $supply) {
-    if (!empty($supply)) {
+    if (! empty($supply)) {
         echo '
           <div class="row">
           <div class="col-md-12">
@@ -30,10 +30,10 @@ foreach ($supplies as $type => $supply) {
             $graph_array = [
                 'height' => 100,
                 'width' => 210,
-                'to' => $config['time']['now'],
+                'to' => \LibreNMS\Config::get('time.now'),
                 'id' => $toner['toner_id'],
                 'type' => $graph_type,
-                'from' => $config['time']['day'],
+                'from' => \LibreNMS\Config::get('time.day'),
                 'legend' => 'no',
             ];
 

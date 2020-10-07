@@ -12,15 +12,13 @@
  * the source code distribution for details.
  */
 
-use LibreNMS\Authentication\LegacyAuth;
-
 header('Content-type: text/plain');
 
-if (!LegacyAuth::user()->hasGlobalAdmin()) {
-    die('ERROR: You need to be admin');
+if (! Auth::user()->hasGlobalAdmin()) {
+    exit('ERROR: You need to be admin');
 }
 
-if (!is_numeric($_POST['token_id'])) {
+if (! is_numeric($_POST['token_id'])) {
     echo 'error with data';
     exit;
 } else {
@@ -32,8 +30,8 @@ if (!is_numeric($_POST['token_id'])) {
         $state = 0;
     }
 
-    $update = dbUpdate(array('disabled' => $state), 'api_tokens', '`id` = ?', array($_POST['token_id']));
-    if (!empty($update) || $update == '0') {
+    $update = dbUpdate(['disabled' => $state], 'api_tokens', '`id` = ?', [$_POST['token_id']]);
+    if (! empty($update) || $update == '0') {
         echo 'success';
         exit;
     } else {

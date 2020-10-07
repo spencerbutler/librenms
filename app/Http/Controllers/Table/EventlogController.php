@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -28,6 +27,7 @@ namespace App\Http\Controllers\Table;
 use App\Models\Eventlog;
 use Carbon\Carbon;
 use LibreNMS\Config;
+use LibreNMS\Enum\Alert;
 use LibreNMS\Util\Url;
 
 class EventlogController extends TableController
@@ -36,6 +36,7 @@ class EventlogController extends TableController
     {
         return [
             'device' => 'nullable|int',
+            'device_group' => 'nullable|int',
             'eventtype' => 'nullable|string',
         ];
     }
@@ -53,6 +54,11 @@ class EventlogController extends TableController
         ];
     }
 
+    protected function sortFields($request)
+    {
+        return ['datetime', 'type', 'device_id', 'message', 'username'];
+    }
+
     /**
      * Defines the base query for this resource
      *
@@ -61,7 +67,11 @@ class EventlogController extends TableController
      */
     public function baseQuery($request)
     {
-        return Eventlog::hasAccess($request->user())->with('device');
+        return Eventlog::hasAccess($request->user())
+            ->with('device')
+            ->when($request->device_group, function ($query) use ($request) {
+                $query->inDeviceGroup($request->device_group);
+            });
     }
 
     public function formatItem($eventlog)
@@ -84,6 +94,13 @@ class EventlogController extends TableController
                     return '<b>' . Url::portLink($port, $port->getShortLabel()) . '</b>';
                 }
             }
+        } elseif (in_array($eventlog->type, \App\Models\Sensor::getTypes())) {
+            if (is_numeric($eventlog->reference)) {
+                $sensor = $eventlog->related;
+                if (isset($sensor)) {
+                    return '<b>' . Url::sensorLink($sensor, $sensor->sensor_descr) . '</b>';
+                }
+            }
         }
 
         return $eventlog->type;
@@ -95,7 +112,7 @@ class EventlogController extends TableController
         $output .= $this->severityLabel($eventlog->severity);
         $output .= " eventlog-status'></span><span style='display:inline;'>";
         $output .= (new Carbon($eventlog->datetime))->format(Config::get('dateformat.compact'));
-        $output .= "</span>";
+        $output .= '</span>';
 
         return $output;
     }
@@ -107,18 +124,20 @@ class EventlogController extends TableController
     private function severityLabel($eventlog_severity)
     {
         switch ($eventlog_severity) {
-            case 1:
-                return "label-success"; //OK
-            case 2:
-                return "label-info"; //Informational
-            case 3:
-                return "label-primary"; //Notice
-            case 4:
-                return "label-warning"; //Warning
-            case 5:
-                return "label-danger"; //Critical
+            case Alert::OK:
+                return 'label-success'; //OK
+            case Alert::INFO:
+                return 'label-info'; //Informational
+            case Alert::NOTICE:
+                return 'label-primary'; //Notice
+            case Alert::WARNING:
+                return 'label-warning'; //Warning
+            case Alert::ERROR:
+                return 'label-danger'; //Critical
             default:
-                return "label-default"; //Unknown
+                return 'label-default'; //Unknown
         }
-    } // end eventlog_severity
+    }
+
+    // end eventlog_severity
 }

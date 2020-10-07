@@ -15,6 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+use LibreNMS\Config;
+
 /*
  * TinyDNS Query Graph
  * @author Daniel Preussker <f0o@devilcode.org>
@@ -26,13 +28,13 @@
 
 require 'includes/html/graphs/common.inc.php';
 
-$i            = 0;
-$scale_min    = 0;
-$nototal      = 1;
-$unit_text    = 'Query/sec';
-$rrd_filename = rrd_name($device['hostname'], array('app', 'tinydns', $app['app_id']));
+$i = 0;
+$scale_min = 0;
+$nototal = 1;
+$unit_text = 'Query/sec';
+$rrd_filename = rrd_name($device['hostname'], ['app', 'tinydns', $app['app_id']]);
 // $array        = explode(":","hinfo:rp:sig:key:axfr:total");
-$array    = array(
+$array = [
     'any',
     'a',
     'aaaa',
@@ -42,17 +44,17 @@ $array    = array(
     'ptr',
     'soa',
     'txt',
-);
-$colours  = 'merged';
-$rrd_list = array();
+];
+$colours = 'merged';
+$rrd_list = [];
 
-$config['graph_colours']['merged'] = array_merge($config['graph_colours']['greens'], $config['graph_colours']['blues']);
+Config::set('graph_colours.merged', array_merge(Config::get('graph_colours.greens'), Config::get('graph_colours.blues')));
 
 if (rrdtool_check_rrd_exists($rrd_filename)) {
     foreach ($array as $ds) {
         $rrd_list[$i]['filename'] = $rrd_filename;
-        $rrd_list[$i]['descr']    = strtoupper($ds);
-        $rrd_list[$i]['ds']       = $ds;
+        $rrd_list[$i]['descr'] = strtoupper($ds);
+        $rrd_list[$i]['ds'] = $ds;
         $i++;
     }
 } else {

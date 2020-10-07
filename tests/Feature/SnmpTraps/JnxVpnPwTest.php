@@ -20,23 +20,20 @@
  *
  * Tests JnxVpnPwDown and JnxVpnPwUp traps from Juniper devices.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 KanREN, Inc
  * @author     Heath Barnhart <hbarnhart@kanren.net>
  */
 
-namespace LibreNMS\Tests;
+namespace LibreNMS\Tests\Feature\SnmpTraps;
 
 use App\Models\Device;
 use App\Models\Port;
 use LibreNMS\Snmptrap\Dispatcher;
 use LibreNMS\Snmptrap\Trap;
-use Log;
 
-class JnxVpnPwTest extends LaravelTestCase
+class JnxVpnPwTest extends SnmpTrapTestCase
 {
-
     public function testVpnPwDown()
     {
         $device = factory(Device::class)->create();

@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -37,6 +36,7 @@ class TopInterfacesController extends WidgetController
         'interface_count' => 5,
         'time_interval' => 15,
         'interface_filter' => null,
+        'device_group' => null,
     ];
 
     /**
@@ -48,12 +48,18 @@ class TopInterfacesController extends WidgetController
         $data = $this->getSettings();
 
         $query = Port::hasAccess($request->user())->with(['device' => function ($query) {
-            $query->select('device_id', 'hostname', 'sysName', 'status');
+            $query->select('device_id', 'hostname', 'sysName', 'status', 'os');
         }])
+            ->isValid()
             ->select('port_id', 'device_id', 'ifName', 'ifDescr', 'ifAlias')
             ->groupBy('port_id', 'device_id', 'ifName', 'ifDescr', 'ifAlias')
             ->where('poll_time', '>', Carbon::now()->subMinutes($data['time_interval'])->timestamp)
-            ->has('device')
+            ->isUp()
+            ->when($data['device_group'], function ($query) use ($data) {
+                $query->inDeviceGroup($data['device_group']);
+            }, function ($query) {
+                $query->has('device');
+            })
             ->orderByRaw('SUM(LEAST(ifInOctets_rate, 9223372036854775807) + LEAST(ifOutOctets_rate, 9223372036854775807)) DESC')
             ->limit($data['interface_count']);
 
@@ -66,9 +72,8 @@ class TopInterfacesController extends WidgetController
         return view('widgets.top-interfaces', $data);
     }
 
-
     public function getSettingsView(Request $request)
     {
-        return view('widgets.settings.top-interfaces', $this->getSettings());
+        return view('widgets.settings.top-interfaces', $this->getSettings(true));
     }
 }

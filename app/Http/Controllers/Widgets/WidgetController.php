@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -26,8 +25,10 @@
 namespace App\Http\Controllers\Widgets;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeviceGroup;
 use App\Models\UserWidget;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 abstract class WidgetController extends Controller
@@ -58,16 +59,22 @@ abstract class WidgetController extends Controller
 
     public function __invoke(Request $request)
     {
-        $this->show_settings = (bool)$request->get('settings');
+        $this->show_settings = (bool) $request->get('settings');
 
         if ($this->show_settings) {
             $view = $this->getSettingsView($request);
-        } else {
-            $view = $this->getView($request);
         }
 
         $settings = $this->getSettings();
-        if (!empty($settings['title'])) {
+
+        if (! $this->show_settings) {
+            if (! empty($settings['device_group'])) {
+                $this->title .= ' (' . DeviceGroup::find($settings['device_group'])->name . ')';
+            }
+            $view = $this->getView($request);
+        }
+
+        if (! empty($settings['title'])) {
             $title = $settings['title'];
         } else {
             $title = __(method_exists($this, 'title') ? app()->call([$this, 'title']) : $this->title);
@@ -79,15 +86,21 @@ abstract class WidgetController extends Controller
     /**
      * Get the settings (with defaults applied)
      *
+     * @param bool $settingsView
      * @return array
      */
-    public function getSettings()
+    public function getSettings($settingsView = false)
     {
         if (is_null($this->settings)) {
             $id = \Request::get('id');
             $widget = UserWidget::find($id);
-            $this->settings = array_replace($this->defaults, $widget ? (array)$widget->settings : []);
+            $this->defaults['refresh'] = $this->defaults['refresh'] ?? 60;
+            $this->settings = array_replace($this->defaults, $widget ? (array) $widget->settings : []);
             $this->settings['id'] = $id;
+
+            if ($settingsView && isset($this->settings['device_group'])) {
+                $this->settings['device_group'] = DeviceGroup::find($this->settings['device_group']);
+            }
         }
 
         return $this->settings;
@@ -104,10 +117,10 @@ abstract class WidgetController extends Controller
     {
         if ($view instanceof View) {
             $html = $view->__toString();
-            $show_settings = (int)starts_with($view->getName(), 'widgets.settings.');
+            $show_settings = (int) Str::startsWith($view->getName(), 'widgets.settings.');
         } else {
-            $html = (string)$view;
-            $show_settings = (int)$this->show_settings;
+            $html = (string) $view;
+            $show_settings = (int) $this->show_settings;
         }
 
         return response()->json([

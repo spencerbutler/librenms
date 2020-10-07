@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2017 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -25,7 +24,10 @@
 
 namespace LibreNMS\OS;
 
+use App\Models\Device;
 use LibreNMS\Device\WirelessSensor;
+use LibreNMS\Interfaces\Discovery\OSDiscovery;
+use LibreNMS\Interfaces\Discovery\Sensors\WirelessApCountDiscovery;
 use LibreNMS\Interfaces\Discovery\Sensors\WirelessClientsDiscovery;
 use LibreNMS\Interfaces\Discovery\Sensors\WirelessFrequencyDiscovery;
 use LibreNMS\Interfaces\Discovery\Sensors\WirelessNoiseFloorDiscovery;
@@ -35,6 +37,8 @@ use LibreNMS\Interfaces\Polling\Sensors\WirelessFrequencyPolling;
 use LibreNMS\OS;
 
 class Arubaos extends OS implements
+    OsDiscovery,
+    WirelessApCountDiscovery,
     WirelessClientsDiscovery,
     WirelessFrequencyDiscovery,
     WirelessFrequencyPolling,
@@ -42,6 +46,19 @@ class Arubaos extends OS implements
     WirelessPowerDiscovery,
     WirelessUtilizationDiscovery
 {
+    public function discoverOS(Device $device): void
+    {
+        parent::discoverOS($device); // yaml
+        $aruba_info = snmp_get_multi($this->getDeviceArray(), [
+            'wlsxSwitchRole.0',
+            'wlsxSwitchMasterIp.0',
+            'wlsxSwitchLicenseSerialNumber.0',
+        ], '-OQUs', 'WLSX-SWITCH-MIB');
+
+        $device->features = $aruba_info[0]['wlsxSwitchRole'] == 'master' ? 'Master Controller' : "Local Controller for {$aruba_info[0]['wlsxSwitchMasterIp']}";
+        $device->serial = $aruba_info[0]['wlsxSwitchLicenseSerialNumber'];
+    }
+
     /**
      * Discover wireless client counts. Type is clients.
      * Returns an array of LibreNMS\Device\Sensor objects that have been discovered
@@ -50,10 +67,59 @@ class Arubaos extends OS implements
      */
     public function discoverWirelessClients()
     {
-        $oid = '.1.3.6.1.4.1.14823.2.2.1.1.3.2'; // WLSX-SWITCH-MIB::wlsxSwitchTotalNumStationsAssociated
+        $oid = '.1.3.6.1.4.1.14823.2.2.1.1.3.2.0'; // WLSX-SWITCH-MIB::wlsxSwitchTotalNumStationsAssociated.0
+
         return [
-            new WirelessSensor('clients', $this->getDeviceId(), $oid, 'arubaos', 1, 'Clients')
+            new WirelessSensor('clients', $this->getDeviceId(), $oid, 'arubaos', 1, 'Client Count'),
         ];
+    }
+
+    /**
+     * Discover wireless AP counts. Type is ap-count.
+     * Returns an array of LibreNMS\Device\Sensor objects that have been discovered
+     *
+     * @return array Sensors
+     */
+    public function discoverWirelessApCount()
+    {
+        $mib = 'WLSX-SWITCH-MIB';
+        $data = $this->getCacheTable('wlsxSwitchTotalNumAccessPoints', $mib);
+        $sensors = [];
+
+        foreach ($data as $key => $value) {
+            $oid = snmp_translate($mib . '::' . $key, 'ALL', 'arubaos', '-On', null);
+            $value = intval($value);
+
+            $low_warn_const = 1; // Default warning threshold = 1 down AP
+            $low_limit_const = 10; // Default critical threshold = 10 down APs
+
+            // Calculate default thresholds based on current AP count
+            $low_warn = $value - $low_warn_const;
+            $low_limit = $value - $low_limit_const;
+
+            // For small current AP counts, set thresholds differently:
+            // If AP count is less than twice the default critical threshold,
+            // then set the critical threshold to roughly half the current AP count.
+            if ($value < $low_limit_const * 2) {
+                $low_limit = round($value / 2, 0, PHP_ROUND_HALF_DOWN);
+            }
+            // If AP count is less than the default warning hreshold,
+            // then don't bother setting thresholds.
+            if ($value <= $low_warn_const) {
+                $low_warn = null;
+                $low_limit = null;
+            }
+
+            // If AP count is less than twice the default warning threshold,
+            // then set the critical threshold to zero.
+            if ($value > 0 && $value <= $low_warn_const * 2) {
+                $low_limit = 0;
+            }
+
+            $sensors[] = new WirelessSensor('ap-count', $this->getDeviceId(), $oid, 'arubaos', 1, 'AP Count', $value, 1, 1, 'sum', null, null, $low_limit, null, $low_warn);
+        }
+
+        return $sensors;
     }
 
     /**
@@ -89,7 +155,7 @@ class Arubaos extends OS implements
     public function discoverWirelessPower()
     {
         // instant
-        return $this->discoverInstantRadio('power', 'aiRadioTransmitPower', "Radio %s: Tx Power");
+        return $this->discoverInstantRadio('power', 'aiRadioTransmitPower', 'Radio %s: Tx Power');
     }
 
     protected function decodeChannel($channel)
@@ -99,7 +165,7 @@ class Arubaos extends OS implements
 
     private function discoverInstantRadio($type, $oid, $desc = 'Radio %s')
     {
-        $data = snmpwalk_cache_numerical_oid($this->getDevice(), $oid, [], 'AI-AP-MIB');
+        $data = snmpwalk_cache_numerical_oid($this->getDeviceArray(), $oid, [], 'AI-AP-MIB');
 
         $sensors = [];
         foreach ($data as $index => $entry) {

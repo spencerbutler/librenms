@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2017 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -33,6 +32,7 @@ class WirelessSensor extends Sensor
     protected static $name = 'Wireless Sensor';
     protected static $table = 'wireless_sensors';
     protected static $data_name = 'wireless-sensor';
+    protected static $translation_prefix = 'wireless';
 
     private $access_point_ip;
 
@@ -101,6 +101,7 @@ class WirelessSensor extends Sensor
     {
         $sensor = parent::toArray();
         $sensor['access_point_id'] = $this->access_point_ip;
+
         return $sensor;
     }
 
@@ -129,129 +130,81 @@ class WirelessSensor extends Sensor
      */
     public static function getTypes($valid = false, $device_id = null)
     {
-        // Add new types here
+        // Add new types here translations/descriptions/units in resources/lang/<lang>/wireless.php
         // FIXME I'm really bad with icons, someone please help!
-        static $types = array(
-            'ap-count' => array(
-                'short' => 'APs',
-                'long' => 'AP Count',
-                'unit' => '',
+        static $types = [
+            'ap-count' => [
                 'icon' => 'wifi',
-            ),
-            'clients' => array(
-                'short' => 'Clients',
-                'long' => 'Client Count',
-                'unit' => '',
+            ],
+            'clients' => [
                 'icon' => 'tablet',
-            ),
-            'quality' => array(
-                'short' => 'Quality',
-                'long' => 'Quality',
-                'unit' => '%',
+            ],
+            'quality' => [
                 'icon' => 'feed',
-            ),
-            'capacity' => array(
-                'short' => 'Capacity',
-                'long' => 'Capacity',
-                'unit' => '%',
+            ],
+            'capacity' => [
                 'icon' => 'feed',
-            ),
-            'utilization' => array(
-                'short' => 'Utilization',
-                'long' => 'utilization',
-                'unit' => '%',
+            ],
+            'utilization' => [
                 'icon' => 'percent',
-            ),
-            'rate' => array(
-                'short' => 'Rate',
-                'long' => 'TX/RX Rate',
-                'unit' => 'bps',
+            ],
+            'rate' => [
                 'icon' => 'tachometer',
-            ),
-            'ccq' => array(
-                'short' => 'CCQ',
-                'long' => 'Client Connection Quality',
-                'unit' => '%',
+            ],
+            'ccq' => [
                 'icon' => 'wifi',
-            ),
-            'snr' => array(
-                'short' => 'SNR',
-                'long' => 'Signal-to-Noise Ratio',
-                'unit' => 'dB',
+            ],
+            'snr' => [
                 'icon' => 'signal',
-            ),
-            'ssr' => array(
-                'short' => 'SSR',
-                'long' => 'Signal Strength Ratio',
-                'unit' => 'dB',
+            ],
+            'sinr' => [
                 'icon' => 'signal',
-            ),
-            'mse' => array(
-                'short' => 'MSE',
-                'long' => 'Mean Square Error',
-                'unit' => 'dB',
+            ],
+            'rsrp' => [
                 'icon' => 'signal',
-            ),
-            'xpi' => array(
-                'short' => 'XPI',
-                'long' => 'Cross Polar Interference',
-                'unit' => 'dB',
+            ],
+            'rsrq' => [
                 'icon' => 'signal',
-            ),
-            'rssi' => array(
-                'short' => 'RSSI',
-                'long' => 'Received Signal Strength Indicator',
-                'unit' => 'dBm',
+            ],
+            'ssr' => [
                 'icon' => 'signal',
-            ),
-            'power' => array(
-                'short' => 'Power/Signal',
-                'long' => 'TX/RX Power or Signal',
-                'unit' => 'dBm',
+            ],
+            'mse' => [
+                'icon' => 'signal',
+            ],
+            'xpi' => [
+                'icon' => 'signal',
+            ],
+            'rssi' => [
+                'icon' => 'signal',
+            ],
+            'power' => [
                 'icon' => 'bolt',
-            ),
-            'noise-floor' => array(
-                'short' => 'Noise Floor',
-                'long' => 'Noise Floor',
-                'unit' => 'dBm/Hz',
+            ],
+            'noise-floor' => [
                 'icon' => 'signal',
-            ),
-            'errors' => array(
-                'short' => 'Errors',
-                'long' => 'Errors',
-                'unit' => '',
+            ],
+            'errors' => [
                 'icon' => 'exclamation-triangle',
                 'type' => 'counter',
-            ),
-            'error-ratio' => array(
-                'short' => 'Error Ratio',
-                'long' => 'Bit/Packet Error Ratio',
-                'unit' => '%',
+            ],
+            'error-ratio' => [
                 'icon' => 'exclamation-triangle',
-            ),
-            'error-rate' => array(
-                'short' => 'BER',
-                'long' => 'Bit Error Rate',
-                'unit' => 'bps',
+            ],
+            'error-rate' => [
                 'icon' => 'exclamation-triangle',
-            ),
-            'frequency' => array(
-                'short' => 'Frequency',
-                'long' => 'Frequency',
-                'unit' => 'MHz',
+            ],
+            'frequency' => [
                 'icon' => 'line-chart',
-            ),
-            'distance' => array(
-                'short' => 'Distance',
-                'long' => 'Distance',
-                'unit' => 'km',
+            ],
+            'distance' => [
                 'icon' => 'space-shuttle',
-            ),
-        );
+            ],
+        ];
 
         if ($valid) {
             $sql = 'SELECT `sensor_class` FROM `wireless_sensors`';
-            $params = array();
+            $params = [];
             if (isset($device_id)) {
                 $sql .= ' WHERE `device_id`=?';
                 $params[] = $device_id;
@@ -259,6 +212,7 @@ class WirelessSensor extends Sensor
             $sql .= ' GROUP BY `sensor_class`';
 
             $sensors = dbFetchColumn($sql, $params);
+
             return array_intersect_key($types, array_flip($sensors));
         }
 
@@ -293,7 +247,7 @@ class WirelessSensor extends Sensor
      */
     public static function channelToFrequency($channel)
     {
-        $channels = array(
+        $channels = [
             1 => 2412,
             2 => 2417,
             3 => 2422,
@@ -336,7 +290,7 @@ class WirelessSensor extends Sensor
             157 => 5785,
             161 => 5805,
             165 => 5825,
-        );
+        ];
 
         return $channels[$channel];
     }

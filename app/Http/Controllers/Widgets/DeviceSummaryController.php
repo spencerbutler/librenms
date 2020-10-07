@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -25,9 +24,6 @@
 
 namespace App\Http\Controllers\Widgets;
 
-use App\Models\Device;
-use App\Models\Port;
-use App\Models\Service;
 use Illuminate\Http\Request;
 use LibreNMS\Config;
 use LibreNMS\Util\ObjectCache;
@@ -40,23 +36,21 @@ abstract class DeviceSummaryController extends WidgetController
     {
         // init defaults we need to check config, so do it in construct
         $this->defaults = [
-            'show_services' => (int)Config::get('show_services', 1),
-            'summary_errors' => (int)Config::get('summary_errors', 0)
+            'show_services' => (int) Config::get('show_services', 1),
+            'summary_errors' => (int) Config::get('summary_errors', 0),
         ];
     }
 
     public function getSettingsView(Request $request)
     {
-        $settings = $this->getSettings();
-
-        return view('widgets.settings.device-summary', $settings);
+        return view('widgets.settings.device-summary', $this->getSettings(true));
     }
 
     protected function getData(Request $request)
     {
         $data = $this->getSettings();
 
-        $data['devices'] = ObjectCache::deviceCounts(['total', 'up', 'down', 'ignored', 'disabled']);
+        $data['devices'] = ObjectCache::deviceCounts(['total', 'up', 'down', 'ignored', 'disabled', 'disable_notify']);
 
         $data['ports'] = $data['summary_errors'] ?
             ObjectCache::portCounts(['total', 'up', 'down', 'ignored', 'shutdown', 'errored']) :

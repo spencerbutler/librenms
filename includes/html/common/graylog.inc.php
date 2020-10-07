@@ -30,10 +30,10 @@ $tmp_output = '
             <tr>
             <th data-column-id="severity" data-sortable="false"></th>
             <th data-column-id="timestamp" data-formatter="browserTime">Timestamp</th>
-            <th data-column-id="level" data-sortable="false">Level</th>
+            <th data-column-id="level">Level</th>
             <th data-column-id="source">Source</th>
             <th data-column-id="message" data-sortable="false">Message</th>
-            <th data-column-id="facility" data-sortable="false">Facility</th>
+            <th data-column-id="facility">Facility</th>
             </tr>
         </thead>
     </table>
@@ -43,6 +43,7 @@ $tmp_output = '
 
 searchbar = "<div id=\"{{ctx.id}}\" class=\"{{css.header}}\"><div class=\"row\">"+
             "<div class=\"col-sm-8\"><form method=\"post\" action=\"\" class=\"form-inline\">"+
+            "' . addslashes(csrf_field()) . '" +
             "Filter: "+
 ';
 
@@ -53,9 +54,9 @@ if ($vars['stream']) {
 }
 $tmp_output .= '"</select>&nbsp;</div>"+';
 
-if (!empty($filter_device)) {
+if (! empty($filter_device)) {
     $tmp_output .= '
-            "<input type=\"hidden\" name=\"device\" id=\"device\" value=\"'. $filter_device .'\">"+
+            "<input type=\"hidden\" name=\"device\" id=\"device\" value=\"' . $filter_device . '\">"+
 ';
 } else {
     $tmp_output .= '
@@ -72,13 +73,25 @@ if (!empty($filter_device)) {
 ';
 }
 
-if (isset($config['graylog']['timezone'])) {
+if (\LibreNMS\Config::has('graylog.timezone')) {
     $timezone = 'row.timestamp;';
 } else {
     $timezone = 'moment.parseZone(row.timestamp).local().format("YYYY-MM-DD HH:MM:SS");';
 }
 
 $tmp_output .= '
+                "<div class=\"form-group\">"+
+                "<select name=\"loglevel\" id=\"loglevel\" class=\"form-control\">"+
+                "<option value=\"\" disabled selected>Log Level</option>"+
+                "<option value=\"0\">' . ('(0) ' . __('syslog.severity.0')) . '</option>"+
+                "<option value=\"1\">' . ('(1) ' . __('syslog.severity.1')) . '</option>"+
+                "<option value=\"2\">' . ('(2) ' . __('syslog.severity.2')) . '</option>"+
+                "<option value=\"3\">' . ('(3) ' . __('syslog.severity.3')) . '</option>"+
+                "<option value=\"4\">' . ('(4) ' . __('syslog.severity.4')) . '</option>"+
+                "<option value=\"5\">' . ('(5) ' . __('syslog.severity.5')) . '</option>"+
+                "<option value=\"6\">' . ('(6) ' . __('syslog.severity.6')) . '</option>"+
+                "<option value=\"7\">' . ('(7) ' . __('syslog.severity.7')) . '</option>"+
+                "</select>&nbsp;</div>"+
                 "<div class=\"form-group\"><select name=\"range\" class=\"form-control\">"+
                 "<option value=\"0\">Search all time</option>"+
                 "<option value=\"300\">Search last 5 minutes</option>"+
@@ -96,19 +109,19 @@ $tmp_output .= '
                 "</select>&nbsp;</div>"+
                 "<button type=\"submit\" class=\"btn btn-success\">Filter</button>&nbsp;"+
                 "</form></div>"+
-                "<div class=\"col-sm-4 actionBar\"><p class=\"{{css.search}}\"></p><p class=\"{{css.actions}}\"></p></div></div></div>"
+                "<div class=\"col-sm-4 actionBar\"><p class=\"{{css.search}}\"></p><p class=\"{{css.actions}}\"></p></div></div></div>";
 
     var graylog_grid = $("#graylog").bootgrid({
         ajax: true,
-        rowCount: ['. $results_limit .', 25,50,100,250,-1],
+        rowCount: [' . $results_limit . ', 25,50,100,250,-1],
         formatters: {
             "browserTime": function(column, row) {
-                return '.$timezone.'
+                return ' . $timezone . '
             }
         },
 ';
 
-if (!isset($no_form) && $no_form !== true) {
+if (! isset($no_form) && $no_form !== true) {
     $tmp_output .= '
         templates: {
             header: searchbar
@@ -122,7 +135,8 @@ $tmp_output .= '
             return {
                 stream: "' . (isset($_POST['stream']) ? mres($_POST['stream']) : '') . '",
                 device: "' . (isset($filter_device) ? $filter_device : '') . '",
-                range: "' . (isset($_POST['range']) ? mres($_POST['range']) : '')  . '"
+                range: "' . (isset($_POST['range']) ? mres($_POST['range']) : '') . '",
+                loglevel: "' . (isset($_POST['loglevel']) ? mres($_POST['loglevel']) : '') . '",
             };
         },
         url: "' . url('/ajax/table/graylog') . '",

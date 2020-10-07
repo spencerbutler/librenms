@@ -7,9 +7,9 @@
                     "sysObjectID": null,
                     "sysDescr": null,
                     "sysContact": null,
-                    "version": null,
-                    "hardware": null,
-                    "features": null,
+                    "version": "V5.5.3 build 171025",
+                    "hardware": "DS-2CD2185FWD-I",
+                    "features": "H.264-MJPEG",
                     "os": "hikvision-cam",
                     "type": "network",
                     "serial": null,
@@ -72,7 +72,7 @@
                     "mempool_largestfree": null,
                     "mempool_lowestfree": null,
                     "mempool_deleted": 0,
-                    "mempool_perc_warn": 75
+                    "mempool_perc_warn": 90
                 }
             ]
         },

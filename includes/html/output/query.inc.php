@@ -17,17 +17,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2016 Neil Lathwood
  * @author     Neil Lathwood <neil@lathwood.co.uk>
  */
 
+use LibreNMS\Alert\AlertDB;
+use LibreNMS\Alert\AlertUtil;
 use LibreNMS\Alerting\QueryBuilderParser;
-use LibreNMS\Authentication\LegacyAuth;
 
-if (!LegacyAuth::user()->hasGlobalAdmin()) {
-    echo("Insufficient Privileges");
+if (! Auth::user()->hasGlobalAdmin()) {
+    echo 'Insufficient Privileges';
     exit();
 }
 
@@ -39,15 +39,15 @@ switch ($type) {
         $filename = "alerts-$hostname.txt";
         $device_id = getidbyname($hostname);
         $device = device_by_id_cache($device_id);
-        $rules = GetRules($device_id);
+        $rules = AlertUtil::getRules($device_id);
         $output = '';
-        $results = array();
+        $results = [];
         foreach ($rules as $rule) {
             if (empty($rule['query'])) {
-                $rule['query'] = GenSQL($rule['rule'], $rule['builder']);
+                $rule['query'] = AlertDB::genSQL($rule['rule'], $rule['builder']);
             }
             $sql = $rule['query'];
-            $qry = dbFetchRow($sql, array($device_id));
+            $qry = dbFetchRow($sql, [$device_id]);
             if (is_array($qry)) {
                 $results[] = $qry;
                 $response = 'matches';
@@ -73,8 +73,8 @@ switch ($type) {
             $output .= 'Alert query: ' . $rule['query'] . PHP_EOL;
             $output .= 'Rule match: ' . $response . PHP_EOL . PHP_EOL;
         }
-        if ($config['alert']['transports']['mail'] === true) {
-            $contacts = GetContacts($results);
+        if (\LibreNMS\Config::get('alert.transports.mail') === true) {
+            $contacts = AlertUtil::getContacts($results);
             if (count($contacts) > 0) {
                 $output .= 'Found ' . count($contacts) . ' contacts to send alerts to.' . PHP_EOL;
             }
@@ -85,13 +85,13 @@ switch ($type) {
         }
         $transports = '';
         $x = 0;
-        foreach ($config['alert']['transports'] as $name => $v) {
-            if ($config['alert']['transports'][$name] === true) {
+        foreach (\LibreNMS\Config::get('alert.transports') as $name => $v) {
+            if (\LibreNMS\Config::get("alert.transports.$name") === true) {
                 $transports .= 'Transport: ' . $name . PHP_EOL;
                 $x++;
             }
         }
-        if (!empty($transports)) {
+        if (! empty($transports)) {
             $output .= 'Found ' . $x . ' transports to send alerts to.' . PHP_EOL;
             $output .= $transports;
         }
@@ -104,7 +104,7 @@ switch ($type) {
 // ---- Output ----
 
 if ($_GET['format'] == 'text') {
-    header("Content-type: text/plain");
+    header('Content-type: text/plain');
     header('X-Accel-Buffering: no');
 
     echo $output;

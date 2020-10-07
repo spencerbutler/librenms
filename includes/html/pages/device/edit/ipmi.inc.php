@@ -1,9 +1,7 @@
 <?php
 
-use LibreNMS\Authentication\LegacyAuth;
-
 if ($_POST['editing']) {
-    if (LegacyAuth::user()->hasGlobalAdmin()) {
+    if (Auth::user()->hasGlobalAdmin()) {
         $ipmi_hostname = mres($_POST['ipmi_hostname']);
         $ipmi_username = mres($_POST['ipmi_username']);
         $ipmi_password = mres($_POST['ipmi_password']);
@@ -27,7 +25,7 @@ if ($_POST['editing']) {
         }
 
         $update_message = 'Device IPMI data updated.';
-        $updated        = 1;
+        $updated = 1;
     } else {
         include 'includes/html/error-no-perm.inc.php';
     }//end if
@@ -44,6 +42,7 @@ if ($updated && $update_message) {
 <h3>IPMI settings</h3>
 
 <form id="edit" name="edit" method="post" action="" role="form" class="form-horizontal">
+<?php echo csrf_field() ?>
 <input type="hidden" name="editing" value="yes">
   <div class="form-group">
     <label for="ipmi_hostname" class="col-sm-2 control-label">IPMI/BMC Hostname</label>

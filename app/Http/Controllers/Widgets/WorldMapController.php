@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -26,9 +25,7 @@
 namespace App\Http\Controllers\Widgets;
 
 use App\Models\Device;
-use App\Models\Location;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use LibreNMS\Config;
 
 class WorldMapController extends WidgetController
@@ -45,9 +42,9 @@ class WorldMapController extends WidgetController
             'init_zoom' => Config::get('leaflet.default_zoom', 2),
             'group_radius' => Config::get('leaflet.group_radius', 80),
             'status' => '0,1',
+            'device_group' => null,
         ];
     }
-
 
     public function getView(Request $request)
     {
@@ -60,10 +57,13 @@ class WorldMapController extends WidgetController
             ->with('location')
             ->isActive()
             ->whereIn('status', $status)
+            ->when($settings['device_group'], function ($query) use ($settings) {
+                $query->inDeviceGroup($settings['device_group']);
+            })
             ->get()
             ->filter(function ($device) use ($status) {
                 /** @var Device $device */
-                if (!($device->location_id && $device->location && $device->location->coordinatesValid())) {
+                if (! ($device->location_id && $device->location && $device->location->coordinatesValid())) {
                     return false;
                 }
 
@@ -76,7 +76,7 @@ class WorldMapController extends WidgetController
                     $device->zOffset = 10000;
 
                     if ($device->isUnderMaintenance()) {
-                        if ($status == 0) {
+                        if (in_array(0, $status)) {
                             return false;
                         }
                         $device->markerIcon = 'blueMarker';
@@ -94,6 +94,6 @@ class WorldMapController extends WidgetController
 
     public function getSettingsView(Request $request)
     {
-        return view('widgets.settings.worldmap', $this->getSettings());
+        return view('widgets.settings.worldmap', $this->getSettings(true));
     }
 }

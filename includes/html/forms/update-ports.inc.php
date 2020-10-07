@@ -1,23 +1,21 @@
 <?php
 
-use LibreNMS\Authentication\LegacyAuth;
-
 header('Content-type: application/json');
 
-if (!LegacyAuth::user()->hasGlobalAdmin()) {
-    $response = array(
+if (! Auth::user()->hasGlobalAdmin()) {
+    $response = [
         'status'  => 'error',
         'message' => 'Need to be admin',
-    );
+    ];
     echo _json_encode($response);
     exit;
 }
 
-$status           = 'error';
-$message          = 'Error with config';
+$status = 'error';
+$message = 'Error with config';
 
 // enable/disable ports/interfaces on devices.
-$device_id    = intval($_POST['device']);
+$device_id = intval($_POST['device']);
 $rows_updated = 0;
 
 foreach ($_POST as $key => $val) {
@@ -26,7 +24,7 @@ foreach ($_POST as $key => $val) {
         $port_id = intval(substr($key, 7));
 
         $oldign = intval($val) ? 1 : 0;
-        $newign = $_POST['ignore_'.$port_id] ? 1 : 0;
+        $newign = $_POST['ignore_' . $port_id] ? 1 : 0;
 
         // As checkboxes are not posted when unset - we effectively need to do a diff to work
         // out a set->unset case.
@@ -34,7 +32,7 @@ foreach ($_POST as $key => $val) {
             continue;
         }
 
-        $n = dbUpdate(array('ignore' => $newign), 'ports', '`device_id` = ? AND `port_id` = ?', array($device_id, $port_id));
+        $n = dbUpdate(['ignore' => $newign], 'ports', '`device_id` = ? AND `port_id` = ?', [$device_id, $port_id]);
 
         if ($n < 0) {
             $rows_updated = -1;
@@ -47,7 +45,7 @@ foreach ($_POST as $key => $val) {
         $port_id = intval(substr($key, 7));
 
         $olddis = intval($val) ? 1 : 0;
-        $newdis = $_POST['disabled_'.$port_id] ? 1 : 0;
+        $newdis = $_POST['disabled_' . $port_id] ? 1 : 0;
 
         // As checkboxes are not posted when unset - we effectively need to do a diff to work
         // out a set->unset case.
@@ -55,7 +53,7 @@ foreach ($_POST as $key => $val) {
             continue;
         }
 
-        $n = dbUpdate(array('disabled' => $newdis), 'ports', '`device_id` = ? AND `port_id` = ?', array($device_id, $port_id));
+        $n = dbUpdate(['disabled' => $newdis], 'ports', '`device_id` = ? AND `port_id` = ?', [$device_id, $port_id]);
 
         if ($n < 0) {
             $rows_updated = -1;
@@ -67,17 +65,17 @@ foreach ($_POST as $key => $val) {
 }//end foreach
 
 if ($rows_updated > 0) {
-    $message = $rows_updated.' Device record updated.';
-    $status         = 'ok';
+    $message = $rows_updated . ' Device record updated.';
+    $status = 'ok';
 } elseif ($rows_updated = '-1') {
     $message = 'Device record unchanged. No update necessary.';
-    $status         = 'ok';
+    $status = 'ok';
 } else {
     $message = 'Device record update error.';
 }
 
-$response = array(
+$response = [
     'status'        => $status,
     'message'       => $message,
-);
+];
 echo _json_encode($response);

@@ -27,11 +27,11 @@ $colours = 'mixed';
 $unit_text = 'Satellites';
 $nototal = 1;
 
-$rrd_filename = rrd_name($device['hostname'], array('app', 'gpsd', $app['app_id']));
-$array = array(
-    'satellites' => array('descr' => 'Visible', 'area' => true),
-    'satellites_used' => array('descr' => 'Used', 'area' => true),
-);
+$rrd_filename = rrd_name($device['hostname'], ['app', 'gpsd', $app['app_id']]);
+$array = [
+    'satellites' => ['descr' => 'Visible', 'area' => true],
+    'satellites_used' => ['descr' => 'Used', 'area' => true],
+];
 
 $i = 0;
 
@@ -40,7 +40,7 @@ if (rrdtool_check_rrd_exists($rrd_filename)) {
         $rrd_list[$i]['filename'] = $rrd_filename;
         $rrd_list[$i]['descr'] = $var['descr'];
         $rrd_list[$i]['ds'] = $ds;
-        $rrd_list[$i]['colour'] = $config['graph_colours'][$colours][$i];
+        $rrd_list[$i]['colour'] = \LibreNMS\Config::get("graph_colours.$colours.$i");
         $rrd_list[$i]['area'] = $var['area'];
         $i++;
     }

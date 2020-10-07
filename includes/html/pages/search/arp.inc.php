@@ -25,30 +25,30 @@ var grid = $("#arp-search").bootgrid({
         header: "<div id=\"{{ctx.id}}\" class=\"{{css.header}}\"><div class=\"row\">"+
                 "<div class=\"col-sm-9 actionBar\"><span class=\"pull-left\">"+
                 "<form method=\"post\" action=\"\" class=\"form-inline\" role=\"form\">"+
+                "<?php echo addslashes(csrf_field()) ?>"+
                 "<div class=\"form-group\">"+
                 "<select name=\"device_id\" id=\"device_id\" class=\"form-control input-sm\">"+
                 "<option value=\"\">All Devices</option>"+
 <?php
 
-use LibreNMS\Authentication\LegacyAuth;
-
-// Select the devices only with ARP tables
+            // Select the devices only with ARP tables
 $sql = 'SELECT D.device_id AS device_id, `hostname`, `D`.`sysName` AS `sysName` FROM `ipv4_mac` AS M, `ports` AS P, `devices` AS D';
+$param = [];
 
-if (!LegacyAuth::user()->hasGlobalRead()) {
-    $sql    .= ' LEFT JOIN `devices_perms` AS `DP` ON `D`.`device_id` = `DP`.`device_id`';
-    $where  .= ' AND `DP`.`user_id`=?';
-    $param[] = LegacyAuth::id();
+if (! Auth::user()->hasGlobalRead()) {
+    $device_ids = Permissions::devicesForUser()->toArray() ?: [0];
+    $where .= ' AND `D`.`device_id` IN ' . dbGenPlaceholders(count($device_ids));
+    $param = array_merge($param, $device_ids);
 }
 
 $sql .= " WHERE M.port_id = P.port_id AND P.device_id = D.device_id $where GROUP BY `D`.`device_id`, `D`.`hostname`, `D`.`sysName` ORDER BY `hostname`";
 foreach (dbFetchRows($sql, $param) as $data) {
-    echo '"<option value=\"'.$data['device_id'].'\""+';
+    echo '"<option value=\"' . $data['device_id'] . '\""+';
     if ($data['device_id'] == $_POST['device_id']) {
         echo '" selected "+';
     }
 
-    echo '">'.format_hostname($data).'</option>"+';
+    echo '">' . format_hostname($data) . '</option>"+';
 }
 ?>
                 "</select>"+
@@ -76,7 +76,7 @@ if ($_POST['searchby'] == 'ip') {
                 "<div class=\"form-group\">"+
                 "<input type=\"text\" name=\"searchPhrase\" id=\"address\" value=\""+
 <?php
-echo '"'.$_POST['searchPhrase'].'"+';
+echo '"' . $_POST['searchPhrase'] . '"+';
 ?>
 
                 "\" class=\"form-control input-sm\" placeholder=\"Address\" />"+

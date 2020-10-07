@@ -15,8 +15,6 @@
  * @author     LibreNMS Contributors
 */
 
-use LibreNMS\Authentication\LegacyAuth;
-
 $pagetitle[] = 'Services';
 
 require_once 'includes/html/modal/new_service.inc.php';
@@ -29,22 +27,22 @@ require_once 'includes/html/modal/delete_service.inc.php';
                 <span style="font-weight: bold;">Services</span> &#187;
 
                 <?php
-                $menu_options = array(
+                $menu_options = [
                     'basic' => 'Basic',
-                );
+                ];
 
-                if (!$vars['view']) {
+                if (! $vars['view']) {
                     $vars['view'] = 'basic';
                 }
 
-                $status_options = array(
+                $status_options = [
                     'all' => 'All',
                     'ok' => 'Ok',
                     'warning' => 'Warning',
                     'critical' => 'Critical',
-                );
+                ];
 
-                if (!$vars['state']) {
+                if (! $vars['state']) {
                     $vars['state'] = 'all';
                 }
 
@@ -62,9 +60,9 @@ require_once 'includes/html/modal/delete_service.inc.php';
                         echo "<span class='pagemenu-selected'>";
                     }
 
-                    echo generate_link($text, $vars, array(
-                        'view' => $option
-                    ));
+                    echo generate_link($text, $vars, [
+                        'view' => $option,
+                    ]);
                     if ($vars['view'] == $option) {
                         echo '</span>';
                     }
@@ -89,9 +87,9 @@ require_once 'includes/html/modal/delete_service.inc.php';
                         echo "<span class='pagemenu-selected'>";
                     }
 
-                    echo generate_link($text, $vars, array(
-                        'state' => $option
-                    ));
+                    echo generate_link($text, $vars, [
+                        'state' => $option,
+                    ]);
                     if ($vars['state'] == $option) {
                         echo '</span>';
                     }
@@ -105,7 +103,7 @@ require_once 'includes/html/modal/delete_service.inc.php';
                 echo '<div style="margin:10px 10px 0px 10px;" id="message"></div>';
                 echo '<div class="panel-body">';
 
-                $sql_param = array();
+                $sql_param = [];
 
                 if (isset($vars['state'])) {
                     if ($vars['state'] == 'ok') {
@@ -122,20 +120,22 @@ require_once 'includes/html/modal/delete_service.inc.php';
                     $sql_param[] = $state;
                 }
 
-                if (LegacyAuth::user()->hasGlobalRead()) {
-                    $host_sql = 'SELECT `D`.`device_id`,`D`.`hostname`,`D`.`sysName` FROM devices AS D, services AS S WHERE D.device_id = S.device_id GROUP BY `D`.`hostname`, `D`.`device_id`, `D`.`sysName` ORDER BY D.hostname';
-                    $host_par = array();
-                } else {
-                    $host_sql = 'SELECT `D`.`device_id`,`D`.`hostname`,`D`.`sysName` FROM devices AS D, services AS S, devices_perms AS P WHERE D.device_id = S.device_id AND D.device_id = P.device_id AND P.user_id = ? GROUP BY `D`.`hostname`, `D`.`device_id`, `D`.`sysName` ORDER BY D.hostname';
-                    $host_par = array(LegacyAuth::id());
+                $host_par = [];
+                $perms_sql = null;
+                if (! Auth::user()->hasGlobalRead()) {
+                    $device_ids = Permissions::devicesForUser()->toArray() ?: [0];
+                    $perms_sql .= ' AND `D`.`device_id` IN ' . dbGenPlaceholders(count($device_ids));
+                    $host_par = $device_ids;
                 }
+
+                $host_sql = 'SELECT `D`.`device_id`,`D`.`hostname`,`D`.`sysName` FROM devices AS D, services AS S WHERE D.device_id = S.device_id ' . $perms_sql . ' GROUP BY `D`.`hostname`, `D`.`device_id`, `D`.`sysName` ORDER BY D.hostname';
 
                 $shift = 1;
                 foreach (dbFetchRows($host_sql, $host_par) as $device) {
                     $device_id = $device['device_id'];
                     $device_hostname = $device['hostname'];
                     $device_sysName = $device['sysName'];
-                    $devlink = generate_device_link($device, null, array('tab' => 'services'));
+                    $devlink = generate_device_link($device, null, ['tab' => 'services']);
                     if ($shift == 1) {
                         array_unshift($sql_param, $device_id);
                         $shift = 0;
@@ -190,7 +190,7 @@ require_once 'includes/html/modal/delete_service.inc.php';
                         echo '<td>' . nl2br(display($service['service_desc'])) . '</td>';
                         echo '<td>' . nl2br(display($service['service_message'])) . '</td>';
 
-                        if (LegacyAuth::user()->hasGlobalAdmin()) {
+                        if (Auth::user()->hasGlobalAdmin()) {
                             echo "<td>
                                     <button type='button' class='btn btn-primary btn-sm' aria-label='Edit' data-toggle='modal' data-target='#create-service' data-service_id='{$service['service_id']}' name='edit-service'><i class='fa fa-pencil' aria-hidden='true'></i></button>
                                     <button type='button' class='btn btn-danger btn-sm' aria-label='Delete' data-toggle='modal' data-target='#confirm-delete' data-service_id='{$service['service_id']}' name='delete-service'><i class='fa fa-trash' aria-hidden='true'></i></button>

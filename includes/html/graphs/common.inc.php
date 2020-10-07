@@ -1,31 +1,34 @@
 <?php
 
+use LibreNMS\Config;
+use LibreNMS\Util\Clean;
+
 if ($_GET['from']) {
-    $from = mres($_GET['from']);
+    $from = parse_at_time($_GET['from']);
 }
 
 if ($_GET['to']) {
-    $to = mres($_GET['to']);
+    $to = parse_at_time($_GET['to']);
 }
 
 if ($_GET['width']) {
-    $width = mres($vars['width']);
+    $width = (int) $_GET['width'];
 }
 
-if ($config['trim_tobias']) {
+if (\LibreNMS\Config::get('trim_tobias')) {
     $width += 12;
 }
 
 if ($_GET['height']) {
-    $height = mres($vars['height']);
+    $height = (int) $_GET['height'];
 }
 
 if ($_GET['inverse']) {
-    $in      = 'out';
-    $out     = 'in';
+    $in = 'out';
+    $out = 'in';
     $inverse = true;
 } else {
-    $in  = 'in';
+    $in = 'in';
     $out = 'out';
 }
 
@@ -52,18 +55,18 @@ if (isset($_GET['noagg'])) {
 }
 
 if ($_GET['title'] == 'yes') {
-    $rrd_options .= " --title='".$graph_title."' ";
+    $rrd_options .= " --title='" . $graph_title . "' ";
 }
 
 if (isset($_GET['graph_title'])) {
-    $rrd_options .= " --title='".$_GET['graph_title']."' ";
+    $rrd_options .= " --title='" . Clean::alphaDashSpace($_GET['graph_title']) . "' ";
 }
 
-if (!isset($scale_min) && !isset($scale_max)) {
+if (! isset($scale_min) && ! isset($scale_max)) {
     $rrd_options .= ' --alt-autoscale-max';
 }
 
-if (!isset($scale_min) && !isset($scale_max) && !isset($norigid)) {
+if (! isset($scale_min) && ! isset($scale_max) && ! isset($norigid)) {
     $rrd_options .= ' --rigid';
 }
 
@@ -79,15 +82,24 @@ if (isset($scale_rigid)) {
     $rrd_options .= ' -r';
 }
 
-$rrd_options .= ' -E --start '.$from.' --end '.$to.' --width '.$width.' --height '.$height.' ';
-$rrd_options .= $config['rrdgraph_def_text'].' -c FONT#'.$config['rrdgraph_def_text_color'];
+if (! isset($float_precision)) {
+    $float_precision = 2;
+}
+
+$rrd_options .= ' -E --start ' . $from . ' --end ' . $to . ' --width ' . $width . ' --height ' . $height . ' ';
+
+if (Config::get('applied_site_style') == 'dark') {
+    $rrd_options .= \LibreNMS\Config::get('rrdgraph_def_text_dark') . ' -c FONT#' . ltrim(\LibreNMS\Config::get('rrdgraph_def_text_color_dark'), '#');
+} else {
+    $rrd_options .= \LibreNMS\Config::get('rrdgraph_def_text') . ' -c FONT#' . ltrim(\LibreNMS\Config::get('rrdgraph_def_text_color'), '#');
+}
 
 if ($_GET['bg']) {
-    $rrd_options .= ' -c CANVAS#'.mres($_GET['bg']).' ';
+    $rrd_options .= ' -c CANVAS#' . Clean::alphaDash($_GET['bg']) . ' ';
 }
 
 if ($_GET['font']) {
-    $rrd_options .= ' -c FONT#'.mres($_GET['font']).' ';
+    $rrd_options .= ' -c FONT#' . Clean::alphaDash($_GET['font']) . ' ';
 }
 
 // $rrd_options .= " -c BACK#FFFFFF";
@@ -96,13 +108,13 @@ if ($height < '99') {
 }
 
 if ($width <= '300') {
-    $rrd_options .= ' --font LEGEND:7:'.$config['mono_font'].' --font AXIS:6:'.$config['mono_font'];
+    $rrd_options .= ' --font LEGEND:7:' . \LibreNMS\Config::get('mono_font') . ' --font AXIS:6:' . \LibreNMS\Config::get('mono_font');
 } else {
-    $rrd_options .= ' --font LEGEND:8:'.$config['mono_font'].' --font AXIS:7:'.$config['mono_font'];
+    $rrd_options .= ' --font LEGEND:8:' . \LibreNMS\Config::get('mono_font') . ' --font AXIS:7:' . \LibreNMS\Config::get('mono_font');
 }
 
 $rrd_options .= ' --font-render-mode normal';
 
-if (isset($_GET['absolute']) && $_GET['absolute'] == "1") {
+if (isset($_GET['absolute']) && $_GET['absolute'] == '1') {
     $rrd_options .= ' --full-size-mode';
 }

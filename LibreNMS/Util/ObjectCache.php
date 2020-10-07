@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -30,28 +29,28 @@ use App\Models\BgpPeer;
 use App\Models\CefSwitching;
 use App\Models\Component;
 use App\Models\Device;
+use App\Models\Mpls;
 use App\Models\OspfInstance;
 use App\Models\Port;
 use App\Models\Pseudowire;
 use App\Models\Sensor;
 use App\Models\Service;
 use App\Models\Toner;
-use App\Models\User;
 use App\Models\Vrf;
 use Cache;
 
 class ObjectCache
 {
-    private static $cache_time = 5;
+    private static $cache_time = 300;
 
     public static function applications()
     {
         return Cache::remember('ObjectCache:applications_list:' . auth()->id(), self::$cache_time, function () {
             return Application::hasAccess(auth()->user())
-                ->select('app_type', 'app_instance')
-                ->groupBy('app_type', 'app_instance')
-                ->orderBy('app_type')
+                ->select('app_type', 'app_state', 'app_instance')
+                ->groupBy('app_type', 'app_state', 'app_instance')
                 ->get()
+                ->sortBy('show_name', SORT_NATURAL | SORT_FLAG_CASE)
                 ->groupBy('app_type');
         });
     }
@@ -60,8 +59,10 @@ class ObjectCache
     {
         return Cache::remember('ObjectCache:routing_counts:' . auth()->id(), self::$cache_time, function () {
             $user = auth()->user();
+
             return [
                 'vrf' => Vrf::hasAccess($user)->count(),
+                'mpls' => Mpls::hasAccess($user)->count(),
                 'ospf' => OspfInstance::hasAccess($user)->count(),
                 'cisco-otv' => Component::hasAccess($user)->where('type', 'Cisco-OTV')->count(),
                 'bgp' => BgpPeer::hasAccess($user)->count(),
@@ -93,7 +94,7 @@ class ObjectCache
                 $sensor_menu[$group][] = [
                     'class' => $class,
                     'icon' => $sensor_model->icon(),
-                    'descr' => $sensor_model->classDescr()
+                    'descr' => $sensor_model->classDescr(),
                 ];
             }
 
@@ -102,12 +103,13 @@ class ObjectCache
                     [
                         'class' => 'toner',
                         'icon' => 'print',
-                        'descr' => __('Toner')
-                    ]
+                        'descr' => __('Toner'),
+                    ],
                 ];
             }
 
             ksort($sensor_menu); // ensure menu order
+
             return $sensor_menu;
         });
     }
@@ -123,6 +125,7 @@ class ObjectCache
         foreach ($fields as $field) {
             $result[$field] = self::getPortCount($field, $device_id);
         }
+
         return $result;
     }
 
@@ -166,6 +169,7 @@ class ObjectCache
         foreach ($fields as $field) {
             $result[$field] = self::getDeviceCount($field);
         }
+
         return $result;
     }
 
@@ -182,6 +186,8 @@ class ObjectCache
                     return $query->isIgnored()->count();
                 case 'disabled':
                     return $query->isDisabled()->count();
+                case 'disable_notify':
+                    return $query->isDisableNotify()->count();
                 case 'total':
                 default:
                     return $query->count();
@@ -193,19 +199,22 @@ class ObjectCache
      * @param array $fields array of counts to get. Valid options: total, ok, warning, critical, ignored, disabled
      * @return array
      */
-    public static function serviceCounts($fields = ['total'])
+    public static function serviceCounts($fields = ['total'], $device_id = 0)
     {
         $result = [];
         foreach ($fields as $field) {
-            $result[$field] = self::getServiceCount($field);
+            $result[$field] = self::getServiceCount($field, $device_id);
         }
+
         return $result;
     }
 
-    private static function getServiceCount($field)
+    private static function getServiceCount($field, $device_id)
     {
-        return Cache::remember("ObjectCache:service_{$field}_count:" . auth()->id(), self::$cache_time, function () use ($field) {
-            $query = Service::hasAccess(auth()->user());
+        return Cache::remember("ObjectCache:service_{$field}_count:" . auth()->id(), self::$cache_time, function () use ($field, $device_id) {
+            $query = Service::hasAccess(auth()->user())->when($device_id, function ($query) use ($device_id) {
+                $query->where('device_id', $device_id);
+            });
             switch ($field) {
                 case 'ok':
                     return $query->isOk()->count();

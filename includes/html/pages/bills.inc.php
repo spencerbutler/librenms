@@ -1,11 +1,9 @@
 <?php
 
-use LibreNMS\Authentication\LegacyAuth;
-
 $no_refresh = true;
 
 if ($_POST['addbill'] == 'yes') {
-    if (!LegacyAuth::user()->hasGlobalAdmin()) {
+    if (! Auth::user()->hasGlobalAdmin()) {
         include 'includes/html/error-no-perm.inc.php';
         exit;
     }
@@ -16,43 +14,43 @@ if ($_POST['addbill'] == 'yes') {
         if ($_POST['bill_type'] == 'quota') {
             if (isset($_POST['bill_quota_type'])) {
                 if ($_POST['bill_quota_type'] == 'MB') {
-                    $multiplier = (1 * $config['billing']['base']);
+                    $multiplier = (1 * \LibreNMS\Config::get('billing.base'));
                 }
 
                 if ($_POST['bill_quota_type'] == 'GB') {
-                    $multiplier = (1 * $config['billing']['base'] * $config['billing']['base']);
+                    $multiplier = (1 * \LibreNMS\Config::get('billing.base') * \LibreNMS\Config::get('billing.base'));
                 }
 
                 if ($_POST['bill_quota_type'] == 'TB') {
-                    $multiplier = (1 * $config['billing']['base'] * $config['billing']['base'] * $config['billing']['base']);
+                    $multiplier = (1 * \LibreNMS\Config::get('billing.base') * \LibreNMS\Config::get('billing.base') * \LibreNMS\Config::get('billing.base'));
                 }
 
-                $bill_quota = (is_numeric($_POST['bill_quota']) ? $_POST['bill_quota'] * $config['billing']['base'] * $multiplier : 0);
-                $bill_cdr   = 0;
+                $bill_quota = (is_numeric($_POST['bill_quota']) ? $_POST['bill_quota'] * \LibreNMS\Config::get('billing.base') * $multiplier : 0);
+                $bill_cdr = 0;
             }
         }
 
         if ($_POST['bill_type'] == 'cdr') {
             if (isset($_POST['bill_cdr_type'])) {
                 if ($_POST['bill_cdr_type'] == 'Kbps') {
-                    $multiplier = (1 * $config['billing']['base']);
+                    $multiplier = (1 * \LibreNMS\Config::get('billing.base'));
                 }
 
                 if ($_POST['bill_cdr_type'] == 'Mbps') {
-                    $multiplier = (1 * $config['billing']['base'] * $config['billing']['base']);
+                    $multiplier = (1 * \LibreNMS\Config::get('billing.base') * \LibreNMS\Config::get('billing.base'));
                 }
 
                 if ($_POST['bill_cdr_type'] == 'Gbps') {
-                    $multiplier = (1 * $config['billing']['base'] * $config['billing']['base'] * $config['billing']['base']);
+                    $multiplier = (1 * \LibreNMS\Config::get('billing.base') * \LibreNMS\Config::get('billing.base') * \LibreNMS\Config::get('billing.base'));
                 }
 
-                $bill_cdr   = (is_numeric($_POST['bill_cdr']) ? $_POST['bill_cdr'] * $multiplier : 0);
+                $bill_cdr = (is_numeric($_POST['bill_cdr']) ? $_POST['bill_cdr'] * $multiplier : 0);
                 $bill_quota = 0;
             }
         }
     }//end if
 
-    $insert = array(
+    $insert = [
         'bill_name'   => $_POST['bill_name'],
         'bill_type'   => $_POST['bill_type'],
         'bill_cdr'    => $bill_cdr,
@@ -64,24 +62,24 @@ if ($_POST['addbill'] == 'yes') {
         'rate_95th_in'      => 0,
         'rate_95th_out'     => 0,
         'rate_95th'         => 0,
-        'dir_95th'          => 'in',
+        'dir_95th'          => $_POST['dir_95th'],
         'total_data'        => 0,
         'total_data_in'     => 0,
         'total_data_out'    => 0,
         'rate_average'      => 0,
         'rate_average_in'   => 0,
         'rate_average_out'  => 0,
-        'bill_last_calc'    => array('NOW()'),
+        'bill_last_calc'    => ['NOW()'],
         'bill_autoadded'    => 0,
-    );
+    ];
 
     $bill_id = dbInsert($insert, 'bills');
 
     if (is_numeric($bill_id) && is_numeric($_POST['port_id'])) {
-        dbInsert(array('bill_id' => $bill_id, 'port_id' => $_POST['port_id']), 'bill_ports');
+        dbInsert(['bill_id' => $bill_id, 'port_id' => $_POST['port_id']], 'bill_ports');
     }
 
-    header('Location: ' . generate_url(array('page' => 'bill', 'bill_id' => $bill_id, 'view' => 'edit')));
+    header('Location: ' . generate_url(['page' => 'bill', 'bill_id' => $bill_id, 'view' => 'edit']));
     exit();
 }
 
@@ -116,7 +114,7 @@ include 'includes/html/modal/new_bill.inc.php';
     <div id="{{ctx.id}}" class="{{css.header}}">
         <div class="row">
             <div class="col-sm-4">
-            <?php if (LegacyAuth::user()->hasGlobalAdmin()) {  ?>
+            <?php if (Auth::user()->hasGlobalAdmin()) {  ?>
                 <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#create-bill"><i class="fa fa-plus"></i> Create Bill</button>
             <?php } ?>
             </div>
@@ -189,11 +187,11 @@ include 'includes/html/modal/new_bill.inc.php';
 
 <?php
 if ($vars['view'] == 'add') {
-?>
+                                ?>
 $(function() {
     $('#create-bill').modal('show');
 });
-<?php
-}
+    <?php
+                            }
 ?>
 </script>

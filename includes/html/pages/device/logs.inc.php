@@ -15,7 +15,7 @@
  * @author     LibreNMS Contributors
 */
 
-if (!isset($vars['section'])) {
+if (! isset($vars['section'])) {
     $vars['section'] = 'eventlog';
 }
 
@@ -24,34 +24,45 @@ echo '<div class="panel panel-default">';
 echo '<div class="panel-heading">';
 echo '<strong>Logging</strong>  &#187; ';
 
+if ($vars['section'] == 'outages') {
+    echo '<span class="pagemenu-selected">';
+}
+
+echo generate_link('Outages', $vars, ['section' => 'outages']);
+if ($vars['section'] == 'outages') {
+    echo '</span>';
+}
+
+echo ' | ';
+
 if ($vars['section'] == 'eventlog') {
     echo '<span class="pagemenu-selected">';
 }
 
-echo generate_link('Event Log', $vars, array('section' => 'eventlog'));
+echo generate_link('Event Log', $vars, ['section' => 'eventlog']);
 if ($vars['section'] == 'eventlog') {
     echo '</span>';
 }
 
-if (isset($config['enable_syslog']) && $config['enable_syslog'] == 1) {
+if (\LibreNMS\Config::get('enable_syslog') == 1) {
     echo ' | ';
 
     if ($vars['section'] == 'syslog') {
         echo '<span class="pagemenu-selected">';
     }
 
-    echo generate_link('Syslog', $vars, array('section' => 'syslog'));
+    echo generate_link('Syslog', $vars, ['section' => 'syslog']);
     if ($vars['section'] == 'syslog') {
         echo '</span>';
     }
 }
 
-if (isset($config['graylog']['server']) && isset($config['graylog']['port'])) {
+if (\LibreNMS\Config::get('graylog.port')) {
     echo ' | ';
     if ($vars['section'] == 'graylog') {
         echo '<span class="pagemenu-selected">';
     }
-    echo generate_link('Graylog', $vars, array('section' => 'graylog'));
+    echo generate_link('Graylog', $vars, ['section' => 'graylog']);
     if ($vars['section'] == 'graylog') {
         echo '</span>';
     }
@@ -70,12 +81,16 @@ switch ($vars['section']) {
         include 'includes/html/pages/eventlog.inc.php';
         break;
     case 'graylog':
-        include 'includes/html/pages/device/logs/'.$vars['section'].'.inc.php';
+        include 'includes/html/pages/device/logs/' . $vars['section'] . '.inc.php';
+        break;
+    case 'outages':
+        $vars['fromdevice'] = true;
+        include 'includes/html/pages/outages.inc.php';
         break;
 
     default:
         echo '</div>';
-        echo report_this('Unknown section '.$vars['section']);
+        echo report_this('Unknown section ' . $vars['section']);
         break;
 }
 

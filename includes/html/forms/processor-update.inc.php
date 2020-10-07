@@ -12,34 +12,32 @@
  * the source code distribution for details.
  */
 
-use LibreNMS\Authentication\LegacyAuth;
-
 header('Content-type: application/json');
 
-if (!LegacyAuth::user()->hasGlobalAdmin()) {
-    $response = array(
+if (! Auth::user()->hasGlobalAdmin()) {
+    $response = [
         'status'  => 'error',
         'message' => 'Need to be admin',
-    );
+    ];
     echo _json_encode($response);
     exit;
 }
 
-$status  = 'error';
+$status = 'error';
 $message = 'Error updating processor information';
 
 $device_id = mres($_POST['device_id']);
 $processor_id = mres($_POST['processor_id']);
 $data = mres($_POST['data']);
 
-if (!is_numeric($device_id)) {
+if (! is_numeric($device_id)) {
     $message = 'Missing device id';
-} elseif (!is_numeric($processor_id)) {
+} elseif (! is_numeric($processor_id)) {
     $message = 'Missing processor id';
-} elseif (!is_numeric($data)) {
+} elseif (! is_numeric($data)) {
     $message = 'Missing value';
 } else {
-    if (dbUpdate(array('processor_perc_warn'=>$data), 'processors', '`processor_id`=? AND `device_id`=?', array($processor_id,$device_id)) >= 0) {
+    if (dbUpdate(['processor_perc_warn'=>$data], 'processors', '`processor_id`=? AND `device_id`=?', [$processor_id, $device_id]) >= 0) {
         $message = 'Processor information updated';
         $status = 'ok';
     } else {
@@ -47,9 +45,9 @@ if (!is_numeric($device_id)) {
     }
 }
 
-$response = array(
+$response = [
     'status'        => $status,
     'message'       => $message,
     'extra'         => $extra,
-);
+];
 echo _json_encode($response);

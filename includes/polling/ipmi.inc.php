@@ -3,7 +3,7 @@
 use LibreNMS\Config;
 use LibreNMS\RRD\RrdDefinition;
 
-$ipmi_rows = dbFetchRows("SELECT * FROM sensors WHERE device_id = ? AND poller_type='ipmi'", array($device['device_id']));
+$ipmi_rows = dbFetchRows("SELECT * FROM sensors WHERE device_id = ? AND poller_type='ipmi'", [$device['device_id']]);
 
 if (is_array($ipmi_rows)) {
     d_echo($ipmi_rows);
@@ -16,7 +16,7 @@ if (is_array($ipmi_rows)) {
         echo 'Fetching IPMI sensor data...';
 
         $cmd = [Config::get('ipmitool', 'ipmitool')];
-        if ($config['own_hostname'] != $device['hostname'] || $ipmi['host'] != 'localhost') {
+        if (Config::get('own_hostname') != $device['hostname'] || $ipmi['host'] != 'localhost') {
             array_push($cmd, '-H', $ipmi['host'], '-U', $ipmi['user'], '-P', $ipmi['password'], '-L', 'USER');
         }
 
@@ -32,10 +32,11 @@ if (is_array($ipmi_rows)) {
         }
 
         foreach (explode("\n", $results) as $row) {
-            list($desc, $value, $type, $status) = explode(',', $row);
+            [$desc, $value, $type, $status] = explode(',', $row);
             $desc = trim($desc, ' ');
-            $ipmi_sensor[$desc][$config['ipmi_unit'][$type]]['value'] = $value;
-            $ipmi_sensor[$desc][$config['ipmi_unit'][$type]]['unit'] = $type;
+            $ipmi_unit_type = Config::get("ipmi_unit.$type");
+            $ipmi_sensor[$desc][$ipmi_unit_type]['value'] = $value;
+            $ipmi_sensor[$desc][$ipmi_unit_type]['unit'] = $type;
         }
 
         foreach ($ipmi_rows as $ipmisensors) {
@@ -49,27 +50,27 @@ if (is_array($ipmi_rows)) {
             $rrd_name = get_sensor_rrd_name($device, $ipmisensors);
             $rrd_def = RrdDefinition::make()->addDataset('sensor', 'GAUGE', -20000, 20000);
 
-            $fields = array(
+            $fields = [
                 'sensor' => $sensor_value,
-            );
+            ];
 
-            $tags = array(
+            $tags = [
                 'sensor_class' => $ipmisensors['sensor_class'],
                 'sensor_type' => $ipmisensors['sensor_type'],
                 'sensor_descr' => $ipmisensors['sensor_descr'],
                 'sensor_index' => $ipmisensors['sensor_index'],
                 'rrd_name' => $rrd_name,
-                'rrd_def' => $rrd_def
-            );
+                'rrd_def' => $rrd_def,
+            ];
             data_update($device, 'ipmi', $tags, $fields);
 
             // FIXME warnings in event & mail not done here yet!
             dbUpdate(
-                array('sensor_current' => $sensor_value,
-                    'lastupdate' => array('NOW()')),
+                ['sensor_current' => $sensor_value,
+                    'lastupdate' => ['NOW()'], ],
                 'sensors',
                 'poller_type = ? AND sensor_class = ? AND sensor_id = ?',
-                array('ipmi', $ipmisensors['sensor_class'], $ipmisensors['sensor_id'])
+                ['ipmi', $ipmisensors['sensor_class'], $ipmisensors['sensor_id']]
             );
         }
 

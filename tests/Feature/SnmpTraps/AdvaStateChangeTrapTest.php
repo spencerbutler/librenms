@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2019 Heath Barnhart
  * @author     Heath Barnhart <hbarnhart@kanren.net>
@@ -26,15 +25,11 @@
 namespace LibreNMS\Tests\Feature\SnmpTraps;
 
 use App\Models\Device;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use LibreNMS\Snmptrap\Trap;
 use LibreNMS\Snmptrap\Dispatcher;
-use LibreNMS\Tests\LaravelTestCase;
+use LibreNMS\Snmptrap\Trap;
 
-class AdvaStateChangeTrapTest extends LaravelTestCase
+class AdvaStateChangeTrapTest extends SnmpTrapTestCase
 {
-    use DatabaseTransactions;
-
     public function testAccessPortChg()
     {
         $device = factory(Device::class)->create();

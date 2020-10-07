@@ -5,17 +5,18 @@
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.  Please see LICENSE.txt at the top level of
  * the source code distribution for details. */
- /**
+/**
  * API Transport
  * @author GitStoph <https://github.com/GitStoph>
  * @copyright 2019 GitStoph
  * @license GPL
- * @package LibreNMS
- * @subpackage Alerts
  */
+
 namespace LibreNMS\Alert\Transport;
 
 use LibreNMS\Alert\Transport;
+use LibreNMS\Config;
+use LibreNMS\Enum\AlertState;
 
 class Alerta extends Transport
 {
@@ -26,15 +27,17 @@ class Alerta extends Transport
         $opts['apikey'] = $this->config['apikey'];
         $opts['alertstate'] = $this->config['alertstate'];
         $opts['recoverstate'] = $this->config['recoverstate'];
+
         return $this->contactAlerta($obj, $opts);
     }
+
     public function contactAlerta($obj, $opts)
     {
         $host = $opts['url'];
         $curl = curl_init();
         $text = strip_tags($obj['msg']);
-        $severity = ($obj['state'] == 0 ? $opts['recoverstate'] : $opts['alertstate']);
-        $deviceurl = "https://librenms.rochester.k12.mn.us/device/device=".$obj['device_id'];
+        $severity = ($obj['state'] == AlertState::RECOVERED ? $opts['recoverstate'] : $opts['alertstate']);
+        $deviceurl = (Config::get('base_url') . 'device/device=' . $obj['device_id']);
         $devicehostname = $obj['hostname'];
         $data = [
             'resource' => $devicehostname,
@@ -53,30 +56,33 @@ class Alerta extends Transport
                 'type' => $obj['type'],
                 'ip' => $obj['ip'],
                 'uptime' => $obj['uptime_long'],
-                'moreInfo' => '<a href='.$deviceurl.'>'.$devicehostname.'</a>',
+                'moreInfo' => '<a href=' . $deviceurl . '>' . $devicehostname . '</a>',
             ],
             'origin' => $obj['rule'],
             'type' => $obj['title'],
         ];
         $alert_message = json_encode($data);
         set_curl_proxy($curl);
-        $headers = array('Content-Type: application/json', 'Authorization: Key ' . $opts['apikey']);
+        $headers = ['Content-Type: application/json', 'Authorization: Key ' . $opts['apikey']];
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($curl, CURLOPT_URL, $host);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($curl, CURLOPT_POST, true);
         curl_setopt($curl, CURLOPT_POSTFIELDS, $alert_message);
-        $ret  = curl_exec($curl);
+        $ret = curl_exec($curl);
         $code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         if ($code != 201) {
             var_dump("API '$host' returned Error");
-            var_dump("Params: " . $alert_message);
-            var_dump("Return: " . $ret);
-            var_dump("Headers: " . $headers);
+            var_dump('Params: ' . $alert_message);
+            var_dump('Return: ' . $ret);
+            var_dump('Headers: ' . $headers);
+
             return 'HTTP Status code ' . $code;
         }
+
         return true;
     }
+
     public static function configTemplate()
     {
         return [
@@ -110,12 +116,12 @@ class Alerta extends Transport
                     'name' => 'recoverstate',
                     'descr' => 'What severity you want Alerta to reflect when rule unmatches/recovers.',
                     'type' => 'text',
-                ]
+                ],
             ],
             'validation' => [
                 'alerta-url' => 'required|url',
                 'apikey' => 'required|string',
-            ]
+            ],
         ];
     }
 }

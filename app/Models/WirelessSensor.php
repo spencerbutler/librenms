@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -34,9 +33,7 @@ class WirelessSensor extends DeviceRelatedModel
 
     public function classDescr()
     {
-        return collect(collect(\LibreNMS\Device\WirelessSensor::getTypes())
-            ->get($this->sensor_class, []))
-            ->get('short', ucwords(str_replace('_', ' ', $this->sensor_class)));
+        return __("wireless.$this->sensor_class.short");
     }
 
     public function icon()

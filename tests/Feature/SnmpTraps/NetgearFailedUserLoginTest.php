@@ -17,19 +17,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  */
 
 namespace LibreNMS\Tests\Feature\SnmpTraps;
 
 use App\Models\Device;
-use App\Models\Ipv4Address;
 use LibreNMS\Snmptrap\Dispatcher;
 use LibreNMS\Snmptrap\Trap;
-use LibreNMS\Tests\LaravelTestCase;
 
-class NetgearFailedUserLoginTest extends LaravelTestCase
+class NetgearFailedUserLoginTest extends SnmpTrapTestCase
 {
     public function testManagedSeries()
     {

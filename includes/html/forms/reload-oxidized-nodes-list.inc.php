@@ -10,9 +10,7 @@
  * the source code distribution for details.
  */
 
-use LibreNMS\Authentication\LegacyAuth;
-
-if (!LegacyAuth::user()->hasGlobalAdmin()) {
+if (! Auth::user()->hasGlobalAdmin()) {
     $status = 'error';
     $message = 'ERROR: You need to be admin to reload Oxidized node list';
 } else {
@@ -20,9 +18,9 @@ if (!LegacyAuth::user()->hasGlobalAdmin()) {
     $status = 'ok';
     $message = 'Oxidized node list was reloaded';
 }
-$output = array(
+$output = [
     'status'  => $status,
     'message' => $message,
-);
+];
 header('Content-type: application/json');
 echo _json_encode($output);

@@ -1,23 +1,38 @@
 #!/usr/bin/env php
 <?php
-
 /**
- * LibreNMS
+ * poller.php
  *
- *   This file is part of LibreNMS.
+ * -Description-
  *
- * @package    LibreNMS
- * @subpackage poller
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  * @copyright  (C) 2006 - 2012 Adam Armstrong
+ *
+ * Modified 4/17/19
+ * @author Heath Barnhart <hbarnhart@kanren.net>
  */
 
+use LibreNMS\Alert\AlertRules;
 use LibreNMS\Config;
+use LibreNMS\Data\Store\Datastore;
 
 $init_modules = ['polling', 'alerts', 'laravel'];
 require __DIR__ . '/includes/init.php';
 
 $poller_start = microtime(true);
-echo $config['project_name_version']." Poller\n";
+echo Config::get('project_name') . " Poller\n";
 
 $options = getopt('h:m:i:n:r::d::v::a::f::q');
 
@@ -33,7 +48,7 @@ if (isset($options['h'])) {
         $doing = 'all';
     } elseif ($options['h']) {
         if (is_numeric($options['h'])) {
-            $where = "AND `device_id` = " . $options['h'];
+            $where = 'AND `device_id` = ' . $options['h'];
             $doing = $options['h'];
         } else {
             if (preg_match('/\*/', $options['h'])) {
@@ -56,8 +71,8 @@ if (isset($options['i']) && $options['i'] && isset($options['n'])) {
             WHERE `disabled` = 0
             ORDER BY `device_id` ASC
         ) temp
-        WHERE MOD(temp.rownum, '.mres($options['i']).') = '.mres($options['n']).';';
-    $doing = $options['n'].'/'.$options['i'];
+        WHERE MOD(temp.rownum, ' . mres($options['i']) . ') = ' . mres($options['n']) . ';';
+    $doing = $options['n'] . '/' . $options['i'];
 }
 
 if (empty($where)) {
@@ -98,101 +113,73 @@ EOH;
     if (isset($options['v'])) {
         $vdebug = true;
     }
-    update_os_cache(true); // Force update of OS Cache
-}
-
-if (isset($options['r'])) {
-    $config['norrd'] = true;
-}
-
-if (isset($options['f'])) {
-    $config['noinfluxdb'] = true;
-}
-
-if (isset($options['p'])) {
-    $prometheus = false;
-}
-
-if (isset($options['g'])) {
-    $config['nographite'] = true;
-}
-
-if ($config['noinfluxdb'] !== true && $config['influxdb']['enable'] === true) {
-    $influxdb = influxdb_connect();
-} else {
-    $influxdb = false;
-}
-
-if ($config['nographite'] !== true && $config['graphite']['enable'] === true) {
-    $graphite = fsockopen($config['graphite']['host'], $config['graphite']['port']);
-    if ($graphite !== false) {
-        echo "Connection made to {$config['graphite']['host']} for Graphite support\n";
-    } else {
-        echo "Connection to {$config['graphite']['host']} has failed, Graphite support disabled\n";
-        $config['nographite'] = true;
-    }
-} else {
-    $graphite = false;
+    \LibreNMS\Util\OS::updateCache(true); // Force update of OS Cache
 }
 
 // If we've specified modules with -m, use them
 $module_override = parse_modules('poller', $options);
+set_debug($debug);
 
-rrdtool_initialize();
+$datastore = Datastore::init($options);
 
 echo "Starting polling run:\n\n";
 $polled_devices = 0;
 $unreachable_devices = 0;
-if (!isset($query)) {
+if (! isset($query)) {
     $query = "SELECT * FROM `devices` WHERE `disabled` = 0 $where ORDER BY `device_id` ASC";
 }
 
 foreach (dbFetch($query) as $device) {
+    DeviceCache::setPrimary($device['device_id']);
     if ($device['os_group'] == 'cisco') {
-        $device['vrf_lite_cisco'] = dbFetchRows("SELECT * FROM `vrf_lite_cisco` WHERE `device_id` = " . $device['device_id']);
+        $device['vrf_lite_cisco'] = dbFetchRows('SELECT * FROM `vrf_lite_cisco` WHERE `device_id` = ' . $device['device_id']);
     } else {
         $device['vrf_lite_cisco'] = '';
     }
 
-    if (!poll_device($device, $module_override)) {
+    if (! poll_device($device, $module_override)) {
         $unreachable_devices++;
     }
 
+    // Update device_groups
+    echo "### Start Device Groups ###\n";
+    $dg_start = microtime(true);
+    $group_changes = \App\Models\DeviceGroup::updateGroupsFor($device['device_id']);
+    d_echo('Groups Added: ' . implode(',', $group_changes['attached']) . PHP_EOL);
+    d_echo('Groups Removed: ' . implode(',', $group_changes['detached']) . PHP_EOL);
+    echo '### End Device Groups, runtime: ' . round(microtime(true) - $dg_start, 4) . "s ### \n\n";
+
     echo "#### Start Alerts ####\n";
-    RunRules($device['device_id']);
+    $rules = new AlertRules();
+    $rules->runRules($device['device_id']);
     echo "#### End Alerts ####\r\n";
     $polled_devices++;
 }
 
-$poller_end  = microtime(true);
-$poller_run  = ($poller_end - $poller_start);
+$poller_end = microtime(true);
+$poller_run = ($poller_end - $poller_start);
 $poller_time = substr($poller_run, 0, 5);
 
-if ($graphite !== false) {
-    fclose($graphite);
-}
-
 if ($polled_devices) {
-    dbInsert(array(
+    dbInsert([
         'type' => 'poll',
         'doing' => $doing,
         'start' => $poller_start,
         'duration' => $poller_time,
         'devices' => $polled_devices,
-        'poller' => $config['distributed_poller_name']
-    ), 'perf_times');
+        'poller' => Config::get('base_url'),
+    ], 'perf_times');
 }
 
-$string = $argv[0]." $doing ".date($config['dateformat']['compact'])." - $polled_devices devices polled in $poller_time secs";
+$string = $argv[0] . " $doing " . date(Config::get('dateformat.compact')) . " - $polled_devices devices polled in $poller_time secs";
 d_echo("$string\n");
 
-if (!isset($options['q'])) {
+if (! isset($options['q'])) {
     printStats();
 }
 
 logfile($string);
-rrdtool_close();
-unset($config);
+Datastore::terminate();
 // Remove this for testing
 // print_r(get_defined_vars());
 

@@ -28,31 +28,30 @@ var grid = $("#fdb-search").bootgrid({
         header: "<div id=\"{{ctx.id}}\" class=\"{{css.header}}\"><div class=\"row\">"+
                 "<div class=\"col-sm-9 actionBar\"><span class=\"pull-left\">"+
                 "<form method=\"post\" action=\"\" class=\"form-inline\" role=\"form\">"+
+                "<?php echo addslashes(csrf_field()) ?>"+
                 "<div class=\"form-group\">"+
                 "<select name=\"device_id\" id=\"device_id\" class=\"form-control input-sm\">"+
                 "<option value=\"\">All Devices</option>"+
 <?php
 
-use LibreNMS\Authentication\LegacyAuth;
-
 // Select the devices only with FDB tables
 $sql = 'SELECT D.device_id AS device_id, `hostname` FROM `ports_fdb` AS F, `ports` AS P, `devices` AS D';
+$param = [];
 
-$param = array();
-if (!LegacyAuth::user()->hasGlobalRead()) {
-    $sql    .= ' LEFT JOIN `devices_perms` AS `DP` ON `D`.`device_id` = `DP`.`device_id`';
-    $where  .= ' AND `DP`.`user_id`=?';
-    $param[] = LegacyAuth::id();
+if (! Auth::user()->hasGlobalRead()) {
+    $device_ids = Permissions::devicesForUser()->toArray() ?: [0];
+    $where .= ' AND `D`.`device_id` IN ' . dbGenPlaceholders(count($device_ids));
+    $param = array_merge($param, $device_ids);
 }
 
 $sql .= " WHERE F.port_id = P.port_id AND P.device_id = D.device_id $where GROUP BY `D`.`device_id`, `D`.`hostname` ORDER BY `hostname`";
 foreach (dbFetchRows($sql, $param) as $data) {
-    echo '"<option value=\"'.$data['device_id'].'\""+';
+    echo '"<option value=\"' . $data['device_id'] . '\""+';
     if ($data['device_id'] == $vars['device_id']) {
         echo '" selected "+';
     }
 
-    echo '">'.format_hostname($data, $data['hostname']).'</option>"+';
+    echo '">' . format_hostname($data, $data['hostname']) . '</option>"+';
 }
 ?>
                 "</select>"+
@@ -104,7 +103,7 @@ if ($vars['searchby'] == 'vlan') {
                 "<div class=\"form-group\">"+
                 "<input type=\"text\" name=\"searchPhrase\" id=\"address\" value=\""+
 <?php
-echo '"'.$vars['searchPhrase'].'"+';
+echo '"' . $vars['searchPhrase'] . '"+';
 ?>
 
                 "\" class=\"form-control input-sm\" placeholder=\"Value\" />"+

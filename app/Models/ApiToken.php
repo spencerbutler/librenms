@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
  * @link       http://librenms.org
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
@@ -42,7 +41,7 @@ class ApiToken extends BaseModel
     {
         $query = self::query()->isEnabled()->where('token_hash', $token);
 
-        if (!is_null($user_id)) {
+        if (! is_null($user_id)) {
             $query->where('user_id', $user_id);
         }
 
@@ -58,6 +57,18 @@ class ApiToken extends BaseModel
     public static function userFromToken($token)
     {
         return User::find(self::idFromToken($token));
+    }
+
+    public static function generateToken(User $user, $description = '')
+    {
+        $token = new static;
+        $token->user_id = $user->user_id;
+        $token->token_hash = $bytes = bin2hex(random_bytes(16));
+        $token->description = $description;
+        $token->disabled = false;
+        $token->save();
+
+        return $token;
     }
 
     /**
@@ -82,6 +93,6 @@ class ApiToken extends BaseModel
 
     public function user()
     {
-        return $this->belongsTo('App\Models\User', 'user_id');
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
     }
 }
